@@ -1,6 +1,5 @@
 import time
 import threading
-import sys
 from pathlib import Path
 from ridge.storage import RIDGE_DIR, get_active_session_id, log_event
 from ridge.tracker import get_active_app
@@ -10,10 +9,16 @@ DAEMON_PID_FILE = RIDGE_DIR / "daemon.pid"
 _stop_event = threading.Event()
 
 
-def _poll(session_id: int):
-    """Single poll — called every POLL_INTERVAL seconds."""
+def _poll(session_id: int, last_poll_ts: list):
+    """Single poll — reads URLs visited since last poll timestamp."""
+    from ridge.tracker import get_urls_since
+
     app = get_active_app()
-    urls = get_recent_urls(since_seconds=POLL_INTERVAL + 5)
+    since = last_poll_ts[0]
+    urls = get_urls_since(since_ts=since)
+
+    # Update last poll time to now
+    last_poll_ts[0] = time.time()
 
     if urls:
         for entry in urls:
@@ -41,11 +46,7 @@ def run_daemon(session_id: int):
 
     stop_file = RIDGE_DIR / "stop"
 
-    # NOTE: signal handlers must be set in main thread only
-    # Daemon uses stop file and stop event for clean shutdown
-
-    import time
-    # Start from session start — captures any browsing from last 5 minutes
+    # Look back 5 minutes from session start to catch recent browsing
     last_poll_ts = [time.time() - 300]
 
     while not _stop_event.is_set():
@@ -56,7 +57,7 @@ def run_daemon(session_id: int):
             break
         try:
             _poll(session_id, last_poll_ts)
-        except Exception as e:
+        except Exception:
             pass  # Never crash the daemon
         _stop_event.wait(timeout=POLL_INTERVAL)
 
@@ -65,7 +66,7 @@ def run_daemon(session_id: int):
 
 
 def start_daemon_process(session_id: int):
-    """Launch daemon in a background thread (foreground process stays alive)."""
+    """Launch daemon in a background thread."""
     t = threading.Thread(target=run_daemon, args=(session_id,), daemon=True)
     t.start()
     return t
