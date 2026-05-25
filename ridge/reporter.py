@@ -15,7 +15,7 @@ console = Console()
 def print_welcome():
     console.print()
     console.print(Panel.fit(
-        "[bold amber]Ridge CLI[/bold amber] [dim]v0.1.0[/dim]\n"
+        "[bold yellow]Ridge CLI[/bold yellow] [dim]v0.1.0[/dim]\n"
         "[dim]Own your attention. Track your focus locally.[/dim]",
         border_style="dim",
         padding=(1, 3),
@@ -197,7 +197,7 @@ def print_sites(events: list, period: str = "Today"):
 def print_first_run():
     console.print()
     console.print(Panel(
-        "[bold amber]Welcome to Ridge CLI![/bold amber] 👋\n\n"
+        "[bold yellow]Welcome to Ridge CLI![/bold yellow] 👋\n\n"
         "Your focus tracking tool is ready.\n\n"
         "[dim]Data stored at:[/dim] [bold]~/.ridge/data.db[/bold]\n"
         "[dim]Zero cloud. Zero telemetry. Fully yours.[/dim]\n\n"
@@ -207,7 +207,7 @@ def print_first_run():
         "  [bold]ridge report[/bold]         See today's report\n"
         "  [bold]ridge help[/bold]           All commands",
         title="[bold]Ridge CLI[/bold]",
-        border_style="amber",
+        border_style="yellow",
         padding=(1, 3),
     ))
     console.print()
