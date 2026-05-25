@@ -109,7 +109,7 @@ def _read_firefox_history(db_path: Path, since_ts: float) -> list[dict]:
     return results
 
 
-def get_recent_urls(since_seconds: int = 35) -> list[dict]:
+def get_recent_urls(since_seconds: int = 60) -> list[dict]:
     """Return URLs visited in the last N seconds across all browsers."""
     since_ts = datetime.now(timezone.utc).timestamp() - since_seconds
     urls = []
@@ -151,3 +151,12 @@ def get_active_app() -> str:
     except Exception:
         pass
     return "Unknown"
+
+def get_urls_since(since_ts: float) -> list[dict]:
+    """Get all URLs visited since a specific unix timestamp."""
+    urls = []
+    for path in _chrome_paths() + _brave_paths():
+        urls.extend(_read_chromium_history(path, since_ts))
+    for path in _firefox_paths():
+        urls.extend(_read_firefox_history(path, since_ts))
+    return urls
