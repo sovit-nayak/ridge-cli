@@ -1,6 +1,5 @@
 import time
 import threading
-import signal
 import sys
 from pathlib import Path
 from ridge.storage import RIDGE_DIR, get_active_session_id, log_event
@@ -36,20 +35,16 @@ def _poll(session_id: int):
 
 
 def run_daemon(session_id: int):
-    """Main daemon loop — runs until stop file appears or SIGTERM."""
+    """Main daemon loop — runs until stop file appears or session ends."""
     RIDGE_DIR.mkdir(exist_ok=True)
     DAEMON_PID_FILE.write_text(str(session_id))
 
     stop_file = RIDGE_DIR / "stop"
 
-    def handle_signal(sig, frame):
-        _stop_event.set()
-
-    signal.signal(signal.SIGTERM, handle_signal)
-    signal.signal(signal.SIGINT, handle_signal)
+    # NOTE: signal handlers must be set in main thread only
+    # Daemon uses stop file and stop event for clean shutdown
 
     while not _stop_event.is_set():
-        # Check if session was ended externally
         if stop_file.exists():
             stop_file.unlink(missing_ok=True)
             break
