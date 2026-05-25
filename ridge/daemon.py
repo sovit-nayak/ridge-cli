@@ -3,7 +3,7 @@ import threading
 import sys
 from pathlib import Path
 from ridge.storage import RIDGE_DIR, get_active_session_id, log_event
-from ridge.tracker import get_recent_urls, get_active_app
+from ridge.tracker import get_active_app
 
 POLL_INTERVAL = 30  # seconds
 DAEMON_PID_FILE = RIDGE_DIR / "daemon.pid"
@@ -44,6 +44,10 @@ def run_daemon(session_id: int):
     # NOTE: signal handlers must be set in main thread only
     # Daemon uses stop file and stop event for clean shutdown
 
+    import time
+    # Start from session start — captures any browsing from last 5 minutes
+    last_poll_ts = [time.time() - 300]
+
     while not _stop_event.is_set():
         if stop_file.exists():
             stop_file.unlink(missing_ok=True)
@@ -51,8 +55,8 @@ def run_daemon(session_id: int):
         if not get_active_session_id():
             break
         try:
-            _poll(session_id)
-        except Exception:
+            _poll(session_id, last_poll_ts)
+        except Exception as e:
             pass  # Never crash the daemon
         _stop_event.wait(timeout=POLL_INTERVAL)
 
