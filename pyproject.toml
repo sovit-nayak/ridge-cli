@@ -9,12 +9,27 @@ description = "Own your attention. Track your focus habits locally."
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.9"
+authors = [
+    {name = "Sovit Nayak", email = "your@email.com"}
+]
+keywords = ["focus", "productivity", "cli", "attention", "tracker"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Environment :: Console",
+    "Topic :: Utilities",
+]
 dependencies = [
     "typer>=0.12",
     "rich>=13.0",
     "psutil>=5.9",
     "schedule>=1.2",
 ]
+
+[project.urls]
+Homepage = "https://github.com/sovit-nayak/ridge-cli"
+Repository = "https://github.com/sovit-nayak/ridge-cli"
 
 [project.scripts]
 ridge = "ridge.cli:app"
