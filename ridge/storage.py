@@ -1,3 +1,4 @@
+from typing import Optional
 import sqlite3
 import os
 from pathlib import Path
@@ -72,7 +73,7 @@ def end_session(session_id: int, focus_score: int):
         active.unlink()
 
 
-def get_active_session_id() -> int | None:
+def get_active_session_id() -> Optional[int]:
     f = RIDGE_DIR / "active_session"
     if f.exists():
         try:
