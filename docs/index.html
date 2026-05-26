@@ -1,0 +1,1829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Ridge CLI — Own Your Attention</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Outfit:wght@300;400;500;600;700;800&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;1,9..144,300;1,9..144,600&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#060608;--bg1:#0d0d12;--bg2:#12121a;--bg3:#1a1a24;
+  --border:rgba(255,255,255,0.07);--border-h:rgba(255,255,255,0.13);
+  --amber:#f5a623;--amber2:#ff8c42;--amber-glow:rgba(245,166,35,0.15);
+  --blue:#4f8ef7;--blue-glow:rgba(79,142,247,0.12);
+  --green:#3ecf8e;--red:#f16060;--yellow:#f5c842;
+  --text:#f0eee8;--text-muted:rgba(240,238,232,0.5);--text-dim:rgba(240,238,232,0.2);
+  --glass:rgba(255,255,255,0.04);--glass-border:rgba(255,255,255,0.08);
+  --radius:12px;--radius-sm:8px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'Outfit',sans-serif;font-size:16px;line-height:1.6;overflow-x:hidden}
+
+/* ── CURSOR ── */
+#cursor{position:fixed;width:6px;height:6px;background:var(--amber);border-radius:50%;pointer-events:none;z-index:99999;transform:translate(-50%,-50%);transition:width .2s,height .2s}
+#cursor-ring{position:fixed;width:32px;height:32px;border:1.5px solid rgba(245,166,35,.35);border-radius:50%;pointer-events:none;z-index:99998;transform:translate(-50%,-50%);transition:width .3s,height .3s,border-color .3s}
+@media(max-width:900px){#cursor,#cursor-ring{display:none}}
+
+/* ── ANIMATED BG BLOBS ── */
+.blob-wrap{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
+.blob{position:absolute;border-radius:50%;filter:blur(80px);opacity:.18;animation:blobFloat 18s ease-in-out infinite}
+.blob1{width:600px;height:600px;background:radial-gradient(circle,var(--amber),transparent 70%);top:-200px;left:-100px;animation-delay:0s}
+.blob2{width:500px;height:500px;background:radial-gradient(circle,var(--blue),transparent 70%);top:20%;right:-150px;animation-delay:-6s}
+.blob3{width:400px;height:400px;background:radial-gradient(circle,#8b5cf6,transparent 70%);bottom:10%;left:20%;animation-delay:-12s}
+@keyframes blobFloat{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(30px,-40px) scale(1.05)}66%{transform:translate(-20px,20px) scale(.95)}}
+
+/* ── GRID PATTERN ── */
+.grid-pattern{position:fixed;inset:0;pointer-events:none;z-index:0;background-image:linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);background-size:60px 60px;mask-image:radial-gradient(ellipse 80% 80% at 50% 0%,black 40%,transparent 100%)}
+
+/* ── NAV ── */
+nav{position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:100;display:flex;align-items:center;justify-content:space-between;padding:10px 16px 10px 20px;background:rgba(13,13,18,.7);backdrop-filter:blur(20px);border:1px solid var(--border);border-radius:50px;width:min(960px,calc(100vw - 32px));transition:background .3s,border-color .3s}
+nav.scrolled{background:rgba(13,13,18,.9);border-color:var(--border-h)}
+.nav-logo{font-family:'Space Mono',monospace;font-size:17px;font-weight:700;color:var(--amber);text-decoration:none;letter-spacing:-.5px}
+.nav-links{display:flex;align-items:center;gap:4px;list-style:none}
+.nav-links a{color:var(--text-muted);text-decoration:none;font-size:13.5px;font-weight:500;padding:6px 14px;border-radius:50px;transition:color .2s,background .2s}
+.nav-links a:hover{color:var(--text);background:rgba(255,255,255,.06)}
+.nav-right{display:flex;align-items:center;gap:8px}
+.nav-gh{color:var(--text-muted);font-size:13px;text-decoration:none;padding:7px 16px;border:1px solid var(--border);border-radius:50px;transition:all .2s}
+.nav-gh:hover{color:var(--text);border-color:var(--border-h)}
+.nav-cta{background:var(--amber);color:#000;font-size:13px;font-weight:700;padding:8px 20px;border-radius:50px;text-decoration:none;transition:opacity .2s,transform .1s}
+.nav-cta:hover{opacity:.9;transform:scale(1.02)}
+
+/* ── HERO ── */
+.hero{position:relative;z-index:1;min-height:100vh;display:flex;align-items:center;padding:120px 40px 80px;max-width:1240px;margin:0 auto;gap:48px}
+.hero-left{flex:1;min-width:0}
+.hero-badge{display:inline-flex;align-items:center;gap:8px;padding:6px 14px 6px 8px;background:var(--glass);border:1px solid var(--glass-border);border-radius:50px;font-size:12.5px;color:var(--text-muted);margin-bottom:28px;backdrop-filter:blur(10px)}
+.hero-badge-dot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.6;transform:scale(.8)}}
+.hero h1{font-family:'Fraunces',serif;font-size:clamp(38px,4.5vw,62px);line-height:1.08;letter-spacing:-2px;margin-bottom:24px;font-weight:600;overflow:visible}
+.hero h1 .grad{background:linear-gradient(135deg,#fff 0%,var(--amber) 60%,var(--amber2) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hero h1 em{font-style:italic;font-weight:300;-webkit-text-fill-color:rgba(240,238,232,.6)}
+.hero-sub{font-size:17.5px;color:var(--text-muted);line-height:1.75;margin-bottom:36px;font-weight:400;max-width:520px}
+.hero-actions{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:48px}
+.btn-main{background:linear-gradient(135deg,var(--amber),var(--amber2));color:#000;padding:14px 32px;border-radius:50px;font-weight:700;font-size:15px;text-decoration:none;display:inline-flex;align-items:center;gap:8px;transition:transform .15s,box-shadow .15s;box-shadow:0 0 32px rgba(245,166,35,.3)}
+.btn-main:hover{transform:translateY(-2px);box-shadow:0 8px 40px rgba(245,166,35,.4)}
+.btn-outline{color:var(--text-muted);padding:13px 24px;border-radius:50px;font-weight:500;font-size:14px;text-decoration:none;display:inline-flex;align-items:center;gap:8px;border:1px solid var(--border);transition:all .2s;backdrop-filter:blur(10px)}
+.btn-outline:hover{color:var(--text);border-color:var(--border-h);background:var(--glass)}
+.hero-install{display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--glass);border:1px solid var(--glass-border);border-radius:var(--radius-sm);backdrop-filter:blur(10px);cursor:pointer;transition:border-color .2s;max-width:360px}
+.hero-install:hover{border-color:rgba(245,166,35,.3)}
+.hero-install-label{font-size:11px;color:var(--text-dim);font-family:'Space Mono',monospace;letter-spacing:.08em}
+.hero-install-cmd{font-family:'Space Mono',monospace;font-size:13.5px;color:var(--amber);flex:1}
+.hero-install-copy{font-size:11px;color:var(--text-dim);transition:color .2s;padding:4px 8px;border-radius:4px;border:1px solid var(--border);font-family:'Space Mono',monospace}
+.hero-install:hover .hero-install-copy{color:var(--amber);border-color:rgba(245,166,35,.3)}
+.copy-flash{font-size:11px;color:var(--green);font-family:'Space Mono',monospace;margin-left:4px;opacity:0;transition:opacity .2s}
+.copy-flash.show{opacity:1}
+
+/* HERO RIGHT - TERMINAL */
+.hero-right{flex:0 0 500px;min-width:0;position:relative}
+.hero-glow{position:absolute;inset:-60px;background:radial-gradient(ellipse,rgba(245,166,35,.1) 0%,transparent 70%);pointer-events:none}
+.terminal{background:rgba(13,13,18,.8);border:1px solid var(--glass-border);border-radius:16px;overflow:hidden;backdrop-filter:blur(20px);box-shadow:0 40px 100px rgba(0,0,0,.6),0 0 0 1px rgba(245,166,35,.06)}
+.t-bar{background:rgba(255,255,255,.03);padding:12px 16px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border)}
+.t-dot{width:10px;height:10px;border-radius:50%}
+.t-title{font-family:'Space Mono',monospace;font-size:11px;color:var(--text-dim);margin:0 auto;letter-spacing:.06em}
+.t-body{padding:20px;font-family:'Space Mono',monospace;font-size:12.5px;line-height:1.9;min-height:300px;max-height:360px;overflow-y:auto}
+.t-body::-webkit-scrollbar{width:3px}
+.t-body::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.tl{display:flex;gap:8px;opacity:0;transform:translateY(3px);transition:opacity .25s,transform .25s}
+.tl.v{opacity:1;transform:translateY(0)}
+.tp{color:var(--amber);flex-shrink:0;user-select:none}
+.tc{color:var(--text)}
+.to{color:var(--text-muted);padding-left:16px}
+.tg{color:var(--green)}.ta{color:var(--amber)}.tr{color:var(--red)}.td{color:var(--text-dim)}
+.t-cursor{display:inline-block;width:7px;height:13px;background:var(--amber);vertical-align:middle;animation:blink 1s step-end infinite;margin-left:2px}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+.t-input-wrap{padding:0 20px 16px;border-top:1px solid var(--border);margin-top:8px;display:flex;align-items:center;gap:8px}
+.t-in-prompt{color:var(--amber);font-family:'Space Mono',monospace;font-size:12.5px;flex-shrink:0}
+.t-in{background:transparent;border:none;outline:none;color:var(--text);font-family:'Space Mono',monospace;font-size:12.5px;flex:1;caret-color:var(--amber)}
+.t-hint{font-family:'Space Mono',monospace;font-size:10px;color:var(--text-dim);text-align:center;padding:6px 20px 14px;letter-spacing:.04em}
+
+/* ── SOCIAL PROOF ── */
+.social-proof{position:relative;z-index:1;border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:20px 48px;display:flex;align-items:center;justify-content:center;gap:48px;flex-wrap:wrap;background:rgba(13,13,18,.5);backdrop-filter:blur(10px)}
+.sp-item{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text-dim)}
+.sp-num{font-family:'Space Mono',monospace;font-size:14px;color:var(--text-muted);font-weight:700}
+.sp-divider{width:1px;height:20px;background:var(--border)}
+
+/* ── SECTIONS ── */
+.section{position:relative;z-index:1;padding:96px 48px;overflow:visible}
+.section-inner{max-width:1160px;margin:0 auto;overflow:visible}
+.section-chip{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;background:var(--amber-glow);border:1px solid rgba(245,166,35,.2);border-radius:50px;font-size:11.5px;color:var(--amber);font-weight:600;letter-spacing:.08em;text-transform:uppercase;margin-bottom:20px}
+.section-chip::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--amber)}
+.section-h{font-family:'Fraunces',serif;font-size:clamp(26px,2.8vw,42px);line-height:1.2;letter-spacing:-1px;margin-bottom:16px;font-weight:600;overflow:visible;padding-right:12px}
+.section-h em{font-style:italic;font-weight:300;background:linear-gradient(135deg,#fff,var(--amber));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.section-sub{font-size:17px;color:var(--text-muted);max-width:580px;line-height:1.75;font-weight:400}
+
+/* ── GLASS CARD ── */
+.glass-card{background:var(--glass);border:1px solid var(--glass-border);border-radius:var(--radius);backdrop-filter:blur(20px);position:relative;overflow:hidden;transition:border-color .3s,transform .2s;cursor:default}
+.glass-card::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.04) 0%,transparent 60%);pointer-events:none}
+.glass-card:hover{border-color:var(--border-h);transform:translateY(-2px)}
+.glass-card .spotlight{position:absolute;width:300px;height:300px;background:radial-gradient(circle,rgba(245,166,35,.08) 0%,transparent 70%);border-radius:50%;pointer-events:none;transition:opacity .3s;opacity:0;transform:translate(-50%,-50%)}
+.glass-card:hover .spotlight{opacity:1}
+
+/* ── HOW IT WORKS ── */
+.how-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:56px}
+.how-card{padding:36px 32px}
+.how-num{font-family:'Space Mono',monospace;font-size:11px;color:var(--amber);opacity:.6;margin-bottom:20px;letter-spacing:.12em}
+.how-icon{font-size:32px;margin-bottom:18px;display:block}
+.how-title{font-size:18px;font-weight:600;margin-bottom:10px;letter-spacing:-.3px}
+.how-desc{font-size:14px;color:var(--text-muted);line-height:1.75}
+.how-code{font-family:'Space Mono',monospace;font-size:12px;color:var(--amber);background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.2);padding:7px 14px;border-radius:6px;margin-top:18px;display:inline-block}
+
+/* ── FEATURES BENTO ── */
+.bento{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:56px}
+.bento-card{padding:40px}
+.bento-card.wide{grid-column:span 2}
+.bento-tag{display:inline-block;font-family:'Space Mono',monospace;font-size:10px;color:var(--amber);background:var(--amber-glow);border:1px solid rgba(245,166,35,.2);padding:3px 10px;border-radius:4px;letter-spacing:.1em;margin-bottom:18px}
+.bento-title{font-size:21px;font-weight:600;margin-bottom:10px;letter-spacing:-.3px;line-height:1.25}
+.bento-desc{font-size:14px;color:var(--text-muted);line-height:1.75}
+.bento-list{margin-top:18px;display:flex;flex-direction:column;gap:9px}
+.bento-item{display:flex;align-items:flex-start;gap:10px;font-size:13.5px;color:var(--text-muted)}
+.bento-item-dot{width:5px;height:5px;border-radius:50%;background:var(--amber);flex-shrink:0;margin-top:8px}
+
+/* ── TIMELINE ── */
+.tl-section{background:rgba(13,13,18,.6)}
+.tl-demo{margin-top:56px}
+.tl-legend{display:flex;gap:24px;margin-bottom:24px;flex-wrap:wrap}
+.tl-leg{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-muted)}
+.tl-leg-dot{width:10px;height:10px;border-radius:3px;flex-shrink:0}
+.tl-track{display:flex;gap:3px;height:56px;align-items:flex-end;margin-bottom:12px}
+.tl-block{flex:1;border-radius:4px 4px 0 0;cursor:pointer;position:relative;transition:opacity .3s,filter .2s}
+.tl-block:hover{filter:brightness(1.3)}
+.tl-block-tip{position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:var(--bg2);border:1px solid var(--border);color:var(--text);font-family:'Space Mono',monospace;font-size:10px;padding:5px 9px;border-radius:5px;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .15s;z-index:10}
+.tl-block:hover .tl-block-tip{opacity:1}
+.tl-time-labels{display:flex;justify-content:space-between;font-family:'Space Mono',monospace;font-size:10px;color:var(--text-dim);margin-bottom:20px}
+.tl-scrubber{width:100%;appearance:none;height:3px;background:var(--border);border-radius:2px;outline:none;cursor:pointer;margin-bottom:16px}
+.tl-scrubber::-webkit-slider-thumb{appearance:none;width:16px;height:16px;border-radius:50%;background:var(--amber);cursor:pointer;box-shadow:0 0 10px rgba(245,166,35,.5)}
+.tl-insight{padding:18px 22px;border-radius:var(--radius-sm);background:var(--glass);border:1px solid var(--glass-border);font-family:'Space Mono',monospace;font-size:12.5px;color:var(--text-muted);line-height:1.7;transition:border-color .3s,color .3s;min-height:56px}
+.tl-insight.good{border-color:rgba(62,207,142,.3);color:var(--green)}
+.tl-insight.warn{border-color:rgba(241,96,96,.3);color:var(--red)}
+
+/* ── SIMULATOR ── */
+.sim-layout{display:grid;grid-template-columns:340px 1fr;gap:48px;margin-top:56px;align-items:start}
+.sim-label{font-family:'Space Mono',monospace;font-size:10.5px;color:var(--text-dim);letter-spacing:.1em;text-transform:uppercase;margin-bottom:12px}
+.day-picker{display:flex;flex-direction:column;gap:8px;margin-bottom:28px}
+.day-btn{background:var(--glass);border:1px solid var(--glass-border);color:var(--text-muted);font-size:13.5px;font-weight:500;padding:14px 18px;border-radius:var(--radius-sm);cursor:pointer;transition:all .2s;text-align:left;display:flex;justify-content:space-between;align-items:center;backdrop-filter:blur(10px)}
+.day-btn:hover{border-color:var(--border-h);color:var(--text)}
+.day-btn.active{border-color:rgba(245,166,35,.4);color:var(--amber);background:var(--amber-glow)}
+.day-btn .ds{font-family:'Space Mono',monospace;font-size:11px;color:inherit;opacity:.6}
+.slider-group{margin-bottom:22px}
+.slider-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.slider-name{font-size:13px;color:var(--text-muted)}
+.slider-val{font-family:'Space Mono',monospace;font-size:13px;color:var(--amber)}
+.ridge-slider{width:100%;appearance:none;height:3px;background:var(--border);border-radius:2px;outline:none;cursor:pointer}
+.ridge-slider::-webkit-slider-thumb{appearance:none;width:14px;height:14px;border-radius:50%;background:var(--amber);cursor:pointer;box-shadow:0 0 8px rgba(245,166,35,.4)}
+.sim-card{background:var(--glass);border:1px solid var(--glass-border);border-radius:16px;overflow:hidden;backdrop-filter:blur(20px)}
+.sim-card-header{padding:16px 24px;background:rgba(255,255,255,.02);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.sim-card-title{font-family:'Space Mono',monospace;font-size:11px;color:var(--text-dim);letter-spacing:.06em}
+.sim-score-wrap{padding:28px 24px 20px;text-align:center}
+.sim-score{font-family:'Fraunces',serif;font-size:72px;font-weight:600;line-height:1;transition:color .4s}
+.sim-score-lbl{font-size:14px;color:var(--text-muted);margin-top:4px}
+.sim-bars-wrap{padding:0 24px 20px}
+.sim-bar-row{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.sim-bar-name{font-size:12px;color:var(--text-muted);width:64px;flex-shrink:0}
+.sim-bar-track{flex:1;height:7px;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden}
+.sim-bar-fill{height:100%;border-radius:4px;transition:width .5s cubic-bezier(.34,1.56,.64,1)}
+.sim-bar-val{font-family:'Space Mono',monospace;font-size:11px;color:var(--text-dim);width:28px;text-align:right}
+.sim-tl-wrap{padding:0 24px 16px}
+.sim-tl-label{font-family:'Space Mono',monospace;font-size:10px;color:var(--text-dim);letter-spacing:.08em;margin-bottom:8px}
+.sim-tl-blocks{display:flex;gap:2px;height:20px}
+.sim-tl-block{flex:1;border-radius:2px;transition:background .3s}
+.sim-insight-wrap{padding:0 24px 24px}
+.sim-insight-txt{font-family:'Space Mono',monospace;font-size:11.5px;line-height:1.75;padding:14px 16px;border-radius:8px;transition:all .3s}
+
+/* ── CATEGORIZER ── */
+.cat-row{display:flex;gap:10px;margin-bottom:20px}
+.cat-input{background:var(--glass);border:1px solid var(--glass-border);color:var(--text);font-family:'Space Mono',monospace;font-size:13.5px;padding:14px 20px;border-radius:var(--radius-sm);flex:1;outline:none;transition:border-color .2s;backdrop-filter:blur(10px)}
+.cat-input:focus{border-color:rgba(245,166,35,.4)}
+.cat-input::placeholder{color:var(--text-dim)}
+.cat-go{background:linear-gradient(135deg,var(--amber),var(--amber2));color:#000;border:none;font-family:'Space Mono',monospace;font-size:13px;font-weight:700;padding:14px 24px;border-radius:var(--radius-sm);cursor:pointer;transition:opacity .2s,transform .1s;white-space:nowrap}
+.cat-go:hover{opacity:.9;transform:scale(1.02)}
+.cat-chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px}
+.cat-chip{font-family:'Space Mono',monospace;font-size:11.5px;color:var(--text-muted);background:var(--glass);border:1px solid var(--glass-border);padding:5px 14px;border-radius:50px;cursor:pointer;transition:all .15s;backdrop-filter:blur(10px)}
+.cat-chip:hover{color:var(--amber);border-color:rgba(245,166,35,.3);background:var(--amber-glow)}
+.cat-result{background:var(--glass);border:1px solid var(--glass-border);border-radius:var(--radius);padding:32px;min-height:130px;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(20px);transition:border-color .3s}
+.cat-result.loaded{border-color:rgba(245,166,35,.25)}
+.cat-empty{font-family:'Space Mono',monospace;font-size:12px;color:var(--text-dim);text-align:center;line-height:2}
+.cat-card{width:100%;display:grid;grid-template-columns:auto 1fr auto;gap:20px;align-items:center}
+.cat-icon-big{font-size:40px;line-height:1}
+.cat-domain-name{font-family:'Space Mono',monospace;font-size:16px;color:var(--text);margin-bottom:8px}
+.cat-badge{display:inline-flex;align-items:center;gap:6px;font-family:'Space Mono',monospace;font-size:11px;font-weight:700;padding:4px 12px;border-radius:50px;letter-spacing:.06em}
+.cat-badge.deep{background:rgba(62,207,142,.12);color:var(--green);border:1px solid rgba(62,207,142,.25)}
+.cat-badge.shallow{background:rgba(245,200,66,.12);color:var(--yellow);border:1px solid rgba(245,200,66,.25)}
+.cat-badge.escape{background:rgba(241,96,96,.12);color:var(--red);border:1px solid rgba(241,96,96,.25)}
+.cat-badge.neutral{background:var(--glass);color:var(--text-muted);border:1px solid var(--border)}
+.cat-conf-big{font-family:'Fraunces',serif;font-size:40px;font-weight:600;display:block;line-height:1}
+.cat-conf-lbl{font-size:11px;color:var(--text-dim);font-family:'Space Mono',monospace}
+.cat-reasoning{margin-top:14px;font-size:13.5px;color:var(--text-muted);line-height:1.7;padding-top:14px;border-top:1px solid var(--border)}
+
+/* ── COST CALC ── */
+.calc-layout{display:grid;grid-template-columns:1fr 420px;gap:48px;margin-top:56px;align-items:start}
+.calc-result{background:var(--glass);border:1px solid var(--glass-border);border-radius:16px;padding:40px;text-align:center;backdrop-filter:blur(20px);position:sticky;top:100px}
+.calc-lbl{font-family:'Space Mono',monospace;font-size:10.5px;color:var(--text-dim);letter-spacing:.1em;text-transform:uppercase;margin-bottom:14px}
+.calc-num{font-family:'Fraunces',serif;font-size:68px;font-weight:600;line-height:1;transition:color .3s;margin-bottom:6px}
+.calc-period{font-family:'Space Mono',monospace;font-size:11px;color:var(--text-dim);margin-bottom:32px}
+.calc-breakdown{border-top:1px solid var(--border);padding-top:24px;display:flex;flex-direction:column;gap:12px;text-align:left}
+.calc-row{display:flex;justify-content:space-between;align-items:center}
+.calc-row-label{font-size:13px;color:var(--text-muted)}
+.calc-row-val{font-family:'Space Mono',monospace;font-size:13px;color:var(--text)}
+.calc-share-btn{margin-top:24px;width:100%;padding:12px;background:var(--amber-glow);border:1px solid rgba(245,166,35,.2);color:var(--amber);font-family:'Space Mono',monospace;font-size:12px;border-radius:var(--radius-sm);cursor:pointer;transition:background .2s;letter-spacing:.04em}
+.calc-share-btn:hover{background:rgba(245,166,35,.2)}
+.calc-inputs{display:flex;flex-direction:column;gap:28px}
+
+/* ── COMMAND PLAYGROUND ── */
+.cmd-layout{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:56px}
+.cmd-list{background:var(--glass);border:1px solid var(--glass-border);border-radius:var(--radius);overflow:hidden;backdrop-filter:blur(20px)}
+.cmd-row{display:grid;grid-template-columns:auto 1fr;gap:16px;padding:16px 22px;border-bottom:1px solid var(--border);align-items:center;cursor:pointer;transition:background .15s}
+.cmd-row:last-child{border-bottom:none}
+.cmd-row:hover,.cmd-row.active{background:rgba(245,166,35,.05)}
+.cmd-row.active{border-left:2px solid var(--amber)}
+.cmd-name{font-family:'Space Mono',monospace;font-size:13px;color:var(--amber);white-space:nowrap}
+.cmd-desc{font-size:13px;color:var(--text-muted)}
+.cmd-terminal{background:var(--glass);border:1px solid var(--glass-border);border-radius:var(--radius);overflow:hidden;backdrop-filter:blur(20px);min-height:420px}
+.cmd-t-bar{background:rgba(255,255,255,.03);padding:11px 16px;font-family:'Space Mono',monospace;font-size:11px;color:var(--text-dim);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
+.cmd-t-dot{width:6px;height:6px;border-radius:50%;background:var(--amber);box-shadow:0 0 6px rgba(245,166,35,.5)}
+.cmd-t-body{padding:20px;font-family:'Space Mono',monospace;font-size:12px;line-height:2;min-height:360px}
+
+/* ── TESTIMONIALS ── */
+.test-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:56px}
+.test-card{padding:32px}
+.test-quote{font-size:15px;color:var(--text-muted);line-height:1.8;margin-bottom:24px;font-style:italic}
+.test-quote strong{color:var(--text);font-style:normal}
+.test-author{display:flex;align-items:center;gap:12px}
+.test-avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--amber),var(--blue));display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#000;flex-shrink:0}
+.test-name{font-size:14px;font-weight:600;color:var(--text)}
+.test-role{font-size:12px;color:var(--text-dim)}
+.test-stars{display:flex;gap:2px;margin-bottom:16px}
+.test-star{color:var(--amber);font-size:12px}
+
+/* ── PRICING ── */
+.pricing-bg{background:rgba(13,13,18,.6)}
+.pricing-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:56px}
+.pricing-card{padding:36px;position:relative}
+.pricing-card.featured{border-color:rgba(245,166,35,.3)!important;background:rgba(245,166,35,.04)!important}
+.pricing-card.featured::before{content:'Most Popular';position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,var(--amber),var(--amber2));color:#000;font-size:11px;font-weight:700;padding:3px 14px;border-radius:50px;white-space:nowrap;letter-spacing:.05em}
+.pricing-tier{font-family:'Space Mono',monospace;font-size:11px;color:var(--text-muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:12px}
+.pricing-price{font-family:'Fraunces',serif;font-size:48px;font-weight:600;line-height:1;margin-bottom:4px}
+.pricing-price sup{font-size:20px;vertical-align:top;margin-top:8px;display:inline-block;font-family:'Outfit',sans-serif}
+.pricing-price span{font-size:16px;color:var(--text-muted);font-family:'Outfit',sans-serif;font-weight:400}
+.pricing-desc{font-size:13.5px;color:var(--text-muted);margin-bottom:28px;margin-top:8px;line-height:1.6}
+.pricing-divider{height:1px;background:var(--border);margin-bottom:24px}
+.pricing-features{display:flex;flex-direction:column;gap:10px;margin-bottom:32px}
+.pricing-feat{display:flex;align-items:center;gap:10px;font-size:13.5px;color:var(--text-muted)}
+.pricing-feat-check{color:var(--green);font-size:12px;flex-shrink:0}
+.pricing-feat-x{color:var(--text-dim);font-size:12px;flex-shrink:0}
+.pricing-btn{display:block;text-align:center;padding:13px;border-radius:50px;font-weight:600;font-size:14px;text-decoration:none;transition:all .2s;border:1px solid var(--border);color:var(--text-muted)}
+.pricing-btn:hover{border-color:var(--border-h);color:var(--text)}
+.pricing-btn.primary{background:linear-gradient(135deg,var(--amber),var(--amber2));color:#000;border:none;box-shadow:0 0 24px rgba(245,166,35,.25)}
+.pricing-btn.primary:hover{transform:translateY(-1px);box-shadow:0 8px 30px rgba(245,166,35,.35)}
+
+/* ── FAQ ── */
+.faq-list{max-width:720px;margin:56px auto 0;display:flex;flex-direction:column;gap:12px}
+.faq-item{background:var(--glass);border:1px solid var(--glass-border);border-radius:var(--radius-sm);overflow:hidden;backdrop-filter:blur(10px);transition:border-color .2s}
+.faq-item.open{border-color:rgba(245,166,35,.25)}
+.faq-question{padding:20px 24px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;font-size:15px;font-weight:500;color:var(--text);user-select:none;gap:16px}
+.faq-icon{color:var(--amber);font-family:'Space Mono',monospace;font-size:14px;flex-shrink:0;transition:transform .3s}
+.faq-item.open .faq-icon{transform:rotate(45deg)}
+.faq-answer{max-height:0;overflow:hidden;transition:max-height .35s ease,padding .3s}
+.faq-item.open .faq-answer{max-height:300px;padding-bottom:20px}
+.faq-answer-inner{padding:0 24px;font-size:14.5px;color:var(--text-muted);line-height:1.8}
+
+/* ── ROADMAP ── */
+.roadmap-line{position:relative;max-width:640px;margin:56px auto 0;padding-left:36px}
+.roadmap-line::before{content:'';position:absolute;left:6px;top:8px;bottom:8px;width:1px;background:linear-gradient(to bottom,var(--amber) 0%,var(--border) 60%,transparent 100%)}
+.rm-item{position:relative;margin-bottom:36px}
+.rm-dot{position:absolute;left:-36px;top:4px;width:12px;height:12px;border-radius:50%;background:var(--bg2);border:2px solid var(--border);transition:all .3s}
+.rm-item.active .rm-dot{background:var(--amber);border-color:var(--amber);box-shadow:0 0 14px rgba(245,166,35,.5)}
+.rm-content{background:var(--glass);border:1px solid var(--glass-border);border-radius:var(--radius-sm);padding:22px 26px;backdrop-filter:blur(10px)}
+.rm-item.active .rm-content{border-color:rgba(245,166,35,.25)}
+.rm-v{font-family:'Space Mono',monospace;font-size:10.5px;color:var(--amber);letter-spacing:.08em;margin-bottom:6px}
+.rm-title{font-size:15.5px;font-weight:600;margin-bottom:10px}
+.rm-tags{display:flex;flex-wrap:wrap;gap:6px}
+.rm-tag{font-family:'Space Mono',monospace;font-size:10px;color:var(--text-dim);background:rgba(255,255,255,.03);border:1px solid var(--border);padding:3px 9px;border-radius:4px}
+
+/* ── CTA ── */
+.cta-section{position:relative;z-index:1;padding:120px 48px;text-align:center;overflow:hidden}
+.cta-glow{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:700px;height:350px;background:radial-gradient(ellipse,rgba(245,166,35,.08) 0%,transparent 70%);pointer-events:none}
+.cta-section .section-h{font-size:clamp(36px,4vw,58px)}
+
+/* ── FOOTER ── */
+footer{position:relative;z-index:1;border-top:1px solid var(--border);padding:40px 48px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:24px;background:rgba(13,13,18,.5);backdrop-filter:blur(10px)}
+.footer-logo{font-family:'Space Mono',monospace;font-size:16px;color:var(--amber);font-weight:700}
+.footer-links{display:flex;gap:24px;list-style:none}
+.footer-links a{font-size:13px;color:var(--text-dim);text-decoration:none;transition:color .2s}
+.footer-links a:hover{color:var(--text-muted)}
+.footer-copy{font-family:'Space Mono',monospace;font-size:11px;color:var(--text-dim);letter-spacing:.04em}
+
+/* ── ANIMATIONS ── */
+.fade-up{opacity:0;transform:translateY(28px);transition:opacity .65s ease,transform .65s ease}
+.fade-up.v{opacity:1;transform:translateY(0)}
+.stagger-1{transition-delay:.1s}
+.stagger-2{transition-delay:.2s}
+.stagger-3{transition-delay:.3s}
+
+@media(max-width:1024px){
+  .hero{grid-template-columns:1fr;padding:100px 32px 60px}
+  .hero-right{flex:none;width:100%}
+  .how-grid{grid-template-columns:1fr}
+  .bento{grid-template-columns:1fr}
+  .bento-card.wide{grid-column:span 1}
+  .sim-layout,.calc-layout,.cmd-layout{grid-template-columns:1fr}
+  .test-grid,.pricing-grid{grid-template-columns:1fr}
+}
+@media(max-width:768px){
+  nav{padding:8px 12px 8px 16px}
+  .nav-links{display:none}
+  .section{padding:64px 24px}
+  .social-proof{padding:16px 24px;gap:24px}
+  .hero{padding:100px 24px 60px}
+  footer{padding:32px 24px;flex-direction:column;align-items:flex-start}
+}
+
+/* ── LANG SWITCHER ── */
+.lang-switcher{display:flex;align-items:center;gap:2px;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:50px;padding:3px}
+.lang-btn{background:transparent;border:none;color:var(--text-muted);font-family:'Outfit',sans-serif;font-size:12px;font-weight:600;padding:5px 10px;border-radius:50px;cursor:pointer;transition:all .2s;letter-spacing:.02em;white-space:nowrap}
+.lang-btn:hover{color:var(--text);background:rgba(255,255,255,.08)}
+.lang-btn.active{background:var(--amber);color:#000}
+
+/* ── THEME TOGGLE ── */
+.theme-toggle{background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--text-muted);font-size:14px;width:34px;height:34px;border-radius:50%;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.theme-toggle:hover{background:rgba(255,255,255,.1);color:var(--text);border-color:var(--border-h)}
+
+/* ── LIGHT THEME — Deep Purple Violet SaaS ── */
+body.light{
+  --bg:#f5f3ff;--bg1:#ede9fe;--bg2:#e0d7fe;--bg3:#c4b5fd;
+  --border:rgba(109,40,217,0.15);--border-h:rgba(109,40,217,0.35);
+  --amber:#7c3aed;--amber2:#a855f7;--amber-glow:rgba(124,58,237,0.12);
+  --green:#059669;--red:#e11d48;--yellow:#d97706;--blue:#2563eb;
+  --text:#1e1b4b;--text-muted:rgba(30,27,75,0.58);--text-dim:rgba(30,27,75,0.32);
+  --glass:rgba(255,255,255,0.72);--glass-border:rgba(139,92,246,0.2);
+  --radius:12px;--radius-sm:8px;
+}
+/* Kill grid in light */
+body.light .grid-pattern{display:none}
+/* Vibrant purple/violet/pink blobs */
+body.light .blob1{width:700px;height:700px;background:radial-gradient(circle,rgba(167,139,250,0.7),transparent 70%);top:-250px;left:-150px;opacity:.55;animation-delay:0s}
+body.light .blob2{width:600px;height:600px;background:radial-gradient(circle,rgba(236,72,153,0.6),transparent 70%);top:15%;right:-180px;opacity:.45;animation-delay:-6s}
+body.light .blob3{width:500px;height:500px;background:radial-gradient(circle,rgba(99,102,241,0.55),transparent 70%);bottom:5%;left:15%;opacity:.45;animation-delay:-12s}
+body.light .blob-wrap{display:block}
+/* Rich purple gradient background — NO grey anywhere */
+body.light{background:linear-gradient(145deg,#f0ebff 0%,#e8dfff 30%,#f3e8ff 60%,#fce7ff 100%)}
+/* NAV */
+body.light nav{background:rgba(245,243,255,0.82);backdrop-filter:blur(24px);border-color:rgba(139,92,246,0.2);box-shadow:0 2px 24px rgba(124,58,237,0.1)}
+body.light .nav-logo{color:#7c3aed}
+body.light .nav-links a{color:rgba(30,27,75,0.55)}
+body.light .nav-links a:hover{color:#1e1b4b;background:rgba(124,58,237,0.08)}
+body.light .nav-gh{color:rgba(30,27,75,0.5);border-color:rgba(139,92,246,0.25)}
+body.light .nav-gh:hover{color:#1e1b4b;border-color:rgba(139,92,246,0.5);background:rgba(124,58,237,0.06)}
+body.light .nav-cta{background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;box-shadow:0 2px 14px rgba(124,58,237,0.4)}
+body.light .lang-switcher{background:rgba(255,255,255,0.55);border-color:rgba(139,92,246,0.2)}
+body.light .lang-btn{color:rgba(30,27,75,0.5)}
+body.light .lang-btn.active{background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff}
+body.light .theme-toggle{background:rgba(255,255,255,0.6);border-color:rgba(139,92,246,0.2);color:rgba(30,27,75,0.5)}
+/* HERO */
+body.light .hero h1{color:#1e1b4b}
+body.light .hero h1 .grad{background:linear-gradient(135deg,#7c3aed 0%,#a855f7 50%,#ec4899 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+body.light .hero h1 em{font-style:italic;-webkit-text-fill-color:rgba(30,27,75,0.38)}
+body.light .hero-sub{color:rgba(30,27,75,0.62)}
+body.light .hero-badge{background:rgba(255,255,255,0.75);border-color:rgba(139,92,246,0.25);color:rgba(30,27,75,0.62)}
+body.light .hero-badge-dot{background:#7c3aed;box-shadow:0 0 10px rgba(124,58,237,0.7)}
+body.light .hero-glow{display:block;background:radial-gradient(ellipse,rgba(168,85,247,0.2) 0%,transparent 70%)}
+body.light .hero-install{background:rgba(255,255,255,0.75);border-color:rgba(139,92,246,0.22)}
+body.light .hero-install:hover{border-color:rgba(139,92,246,0.5);background:rgba(255,255,255,0.92)}
+body.light .hero-install-cmd{color:#7c3aed}
+body.light .hero-install-label{color:rgba(30,27,75,0.3)}
+body.light .hero-install-copy{border-color:rgba(139,92,246,0.2);color:rgba(30,27,75,0.35)}
+body.light .copy-flash{color:#059669}
+/* BUTTONS */
+body.light .btn-main{background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;box-shadow:0 4px 24px rgba(124,58,237,0.45)}
+body.light .btn-main:hover{box-shadow:0 8px 36px rgba(124,58,237,0.55);transform:translateY(-2px)}
+body.light .btn-outline{color:rgba(30,27,75,0.62);border-color:rgba(139,92,246,0.28)}
+body.light .btn-outline:hover{color:#1e1b4b;border-color:rgba(139,92,246,0.5);background:rgba(124,58,237,0.06)}
+/* TERMINAL — rich dark purple, fully readable */
+body.light .terminal{background:#0f0a1e;border:1px solid rgba(139,92,246,0.4);box-shadow:0 32px 80px rgba(124,58,237,0.25),0 0 0 1px rgba(168,85,247,0.12)}
+body.light .t-bar{background:#0a0615;border-bottom:1px solid rgba(139,92,246,0.2)}
+body.light .t-body{background:#0f0a1e}
+body.light .tc{color:#e2d9ff}
+body.light .to{color:rgba(196,181,253,0.7)}
+body.light .td{color:rgba(139,92,246,0.4)}
+body.light .ta{color:#c084fc}
+body.light .tg{color:#4ade80}
+body.light .tr{color:#f87171}
+body.light .t-cursor{background:#a855f7}
+body.light .t-in-prompt{color:#a855f7}
+/* SOCIAL PROOF */
+body.light .social-proof{background:rgba(255,255,255,0.55);backdrop-filter:blur(16px);border-color:rgba(139,92,246,0.15)}
+body.light .sp-num{color:#7c3aed;font-weight:700}
+body.light .sp-item{color:rgba(30,27,75,0.55)}
+body.light .sp-divider{background:rgba(139,92,246,0.2)}
+/* SECTIONS — consistent purple-tinted white, no grey */
+body.light .section{background:transparent}
+body.light section[style*="background:rgba(13,13,18"]{background:rgba(237,233,254,0.85)!important;backdrop-filter:blur(16px)}
+body.light .tl-section{background:rgba(237,233,254,0.85)!important;backdrop-filter:blur(16px)}
+body.light #workflow{background:rgba(245,243,255,0.9)!important}
+body.light .wf-hours{background:rgba(255,255,255,0.8);border-radius:12px;padding:12px;border:1px solid rgba(139,92,246,0.15)}
+body.light .wf-hour{background:rgba(255,255,255,0.6)}
+body.light .wf-hour:hover{background:rgba(255,255,255,0.95);border-color:rgba(139,92,246,0.3)}
+body.light .wf-hour.active{background:rgba(255,255,255,1);border-color:rgba(124,58,237,0.5);box-shadow:0 4px 20px rgba(124,58,237,0.15)}
+body.light .wf-hour-bar-wrap{background:rgba(124,58,237,0.1)}
+body.light .wf-hour-time{color:rgba(30,27,75,0.45)}
+body.light .wf-hour-score{color:rgba(30,27,75,0.45)}
+body.light .wf-hour.active .wf-hour-time{color:#7c3aed;font-weight:700}
+body.light .wf-hour.active .wf-hour-score{color:#7c3aed;font-weight:700}
+/* CHIPS */
+body.light .section-chip{background:rgba(124,58,237,0.1);border-color:rgba(124,58,237,0.25);color:#7c3aed}
+body.light .section-chip::before{background:#7c3aed}
+body.light .section-h{color:#1e1b4b}
+body.light .section-h em{background:linear-gradient(135deg,#7c3aed,#a855f7,#ec4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+body.light .section-sub{color:rgba(30,27,75,0.6)}
+/* GLASS CARDS */
+body.light .glass-card{background:rgba(255,255,255,0.72);border-color:rgba(139,92,246,0.18);box-shadow:0 4px 28px rgba(124,58,237,0.1),0 1px 4px rgba(139,92,246,0.08);backdrop-filter:blur(20px)}
+body.light .glass-card:hover{border-color:rgba(139,92,246,0.4);box-shadow:0 16px 48px rgba(124,58,237,0.18);transform:translateY(-3px)}
+body.light .glass-card .spotlight{background:radial-gradient(circle,rgba(124,58,237,0.1) 0%,transparent 70%)}
+body.light .how-num{color:rgba(124,58,237,0.45)}
+body.light .how-title{color:#1e1b4b}
+body.light .how-desc{color:rgba(30,27,75,0.6)}
+body.light .how-code{background:rgba(124,58,237,0.08);border-color:rgba(124,58,237,0.22);color:#7c3aed}
+body.light .bento-tag{background:rgba(124,58,237,0.1);border-color:rgba(124,58,237,0.22);color:#7c3aed}
+body.light .bento-title{color:#1e1b4b}
+body.light .bento-desc{color:rgba(30,27,75,0.6)}
+body.light .bento-item{color:rgba(30,27,75,0.6)}
+body.light .bento-item-dot{background:#7c3aed}
+/* TIMELINE */
+body.light .tl-scrubber{background:rgba(139,92,246,0.15)}
+body.light .tl-scrubber::-webkit-slider-thumb{background:#7c3aed;box-shadow:0 0 12px rgba(124,58,237,0.5)}
+body.light .tl-insight{background:rgba(255,255,255,0.72);border-color:rgba(139,92,246,0.18);color:rgba(30,27,75,0.62);backdrop-filter:blur(10px)}
+body.light .tl-insight.good{background:rgba(5,150,105,0.08);border-color:rgba(5,150,105,0.28);color:#059669}
+body.light .tl-insight.warn{background:rgba(225,29,72,0.08);border-color:rgba(225,29,72,0.28);color:#e11d48}
+body.light .tl-time-labels{color:rgba(30,27,75,0.3)}
+body.light .tl-leg{color:rgba(30,27,75,0.58)}
+/* SIMULATOR */
+body.light .sim-card{background:rgba(255,255,255,0.78);border-color:rgba(139,92,246,0.2);box-shadow:0 8px 36px rgba(124,58,237,0.12);backdrop-filter:blur(20px)}
+body.light .sim-card-header{background:rgba(124,58,237,0.05);border-color:rgba(139,92,246,0.12)}
+body.light .sim-card-title{color:rgba(30,27,75,0.35)}
+body.light .sim-score-lbl{color:rgba(30,27,75,0.5)}
+body.light .sim-bar-name{color:rgba(30,27,75,0.52)}
+body.light .sim-bar-track{background:rgba(139,92,246,0.1)}
+body.light .sim-bar-val{color:rgba(30,27,75,0.38)}
+body.light .sim-tl-label{color:rgba(30,27,75,0.3)}
+body.light .day-btn{background:rgba(255,255,255,0.65);border-color:rgba(139,92,246,0.16);color:rgba(30,27,75,0.62)}
+body.light .day-btn:hover{border-color:rgba(139,92,246,0.38);background:rgba(255,255,255,0.9);color:#1e1b4b}
+body.light .day-btn.active{background:linear-gradient(135deg,rgba(124,58,237,0.15),rgba(168,85,247,0.1));border-color:rgba(124,58,237,0.5);color:#7c3aed}
+body.light .day-btn.active .ds{color:rgba(124,58,237,0.65)}
+body.light .slider-name{color:rgba(30,27,75,0.58)}
+body.light .slider-val{color:#7c3aed}
+body.light .ridge-slider{background:rgba(139,92,246,0.15)}
+body.light .ridge-slider::-webkit-slider-thumb{background:#7c3aed;box-shadow:0 0 10px rgba(124,58,237,0.45)}
+body.light .sim-label{color:rgba(30,27,75,0.35)}
+/* CATEGORIZER */
+body.light .cat-input{background:rgba(255,255,255,0.82);border-color:rgba(139,92,246,0.2);color:#1e1b4b}
+body.light .cat-input::placeholder{color:rgba(30,27,75,0.3)}
+body.light .cat-input:focus{border-color:rgba(124,58,237,0.55);box-shadow:0 0 0 3px rgba(124,58,237,0.1)}
+body.light .cat-go{background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;box-shadow:0 2px 14px rgba(124,58,237,0.4)}
+body.light .cat-chip{background:rgba(255,255,255,0.65);border-color:rgba(139,92,246,0.16);color:rgba(30,27,75,0.62)}
+body.light .cat-chip:hover{background:rgba(124,58,237,0.1);color:#7c3aed;border-color:rgba(124,58,237,0.38)}
+body.light .cat-result{background:rgba(255,255,255,0.78);border-color:rgba(139,92,246,0.18);box-shadow:0 4px 24px rgba(124,58,237,0.1);backdrop-filter:blur(20px)}
+body.light .cat-result.loaded{border-color:rgba(124,58,237,0.35)}
+body.light .cat-empty{color:rgba(30,27,75,0.35)}
+body.light .cat-domain-name{color:#1e1b4b}
+body.light .cat-reasoning{color:rgba(30,27,75,0.6);border-color:rgba(139,92,246,0.12)}
+body.light .cat-conf-lbl{color:rgba(30,27,75,0.3)}
+/* CALCULATOR */
+body.light .calc-result{background:rgba(255,255,255,0.78);border-color:rgba(139,92,246,0.2);box-shadow:0 8px 36px rgba(124,58,237,0.12);backdrop-filter:blur(20px)}
+body.light .calc-lbl{color:rgba(30,27,75,0.35)}
+body.light .calc-period{color:rgba(30,27,75,0.3)}
+body.light .calc-breakdown{border-color:rgba(139,92,246,0.12)}
+body.light .calc-row-label{color:rgba(30,27,75,0.58)}
+body.light .calc-row-val{color:#1e1b4b}
+body.light .calc-share-btn{background:rgba(124,58,237,0.08);border-color:rgba(124,58,237,0.22);color:#7c3aed}
+body.light .calc-share-btn:hover{background:rgba(124,58,237,0.16)}
+/* COMMANDS */
+body.light .cmd-list{background:rgba(255,255,255,0.75);border-color:rgba(139,92,246,0.16);backdrop-filter:blur(16px)}
+body.light .cmd-row{border-color:rgba(139,92,246,0.08)}
+body.light .cmd-row:hover{background:rgba(124,58,237,0.05)}
+body.light .cmd-row.active{background:rgba(124,58,237,0.07);border-left-color:#7c3aed}
+body.light .cmd-name{color:#7c3aed}
+body.light .cmd-desc{color:rgba(30,27,75,0.52)}
+body.light .cmd-terminal{background:#0f0a1e;border-color:rgba(139,92,246,0.35);box-shadow:0 8px 40px rgba(124,58,237,0.2)}
+body.light .cmd-t-bar{background:#0a0615;border-color:rgba(139,92,246,0.18)}
+body.light .cmd-t-dot{background:#a855f7;box-shadow:0 0 8px rgba(168,85,247,0.6)}
+body.light #cmdTitle{color:rgba(196,181,253,0.7)}
+body.light .cmd-t-body{color:#e2d9ff}
+/* TESTIMONIALS */
+body.light .test-card{background:rgba(255,255,255,0.72);border-color:rgba(139,92,246,0.16);box-shadow:0 4px 24px rgba(124,58,237,0.08);backdrop-filter:blur(16px)}
+body.light .test-quote{color:rgba(30,27,75,0.65)}
+body.light .test-quote strong{color:#1e1b4b}
+body.light .test-name{color:#1e1b4b}
+body.light .test-role{color:rgba(30,27,75,0.42)}
+body.light .test-star{color:#a855f7}
+body.light .test-avatar{background:linear-gradient(135deg,#7c3aed,#ec4899);color:#fff}
+/* FAQ */
+body.light .faq-item{background:rgba(255,255,255,0.72);border-color:rgba(139,92,246,0.14);backdrop-filter:blur(12px)}
+body.light .faq-item.open{border-color:rgba(124,58,237,0.4);background:rgba(255,255,255,0.88)}
+body.light .faq-question{color:#1e1b4b}
+body.light .faq-icon{color:#7c3aed}
+body.light .faq-answer-inner{color:rgba(30,27,75,0.62)}
+/* ROADMAP */
+body.light .roadmap-line::before{background:linear-gradient(to bottom,#7c3aed,rgba(124,58,237,0.2),transparent)}
+body.light .rm-dot{background:#ede9fe;border-color:rgba(139,92,246,0.28)}
+body.light .rm-item.active .rm-dot{background:#7c3aed;border-color:#7c3aed;box-shadow:0 0 16px rgba(124,58,237,0.55)}
+body.light .rm-content{background:rgba(255,255,255,0.72);border-color:rgba(139,92,246,0.14);backdrop-filter:blur(12px)}
+body.light .rm-item.active .rm-content{border-color:rgba(124,58,237,0.38);box-shadow:0 4px 24px rgba(124,58,237,0.12)}
+body.light .rm-v{color:rgba(124,58,237,0.65)}
+body.light .rm-title{color:#1e1b4b}
+body.light .rm-tag{background:rgba(124,58,237,0.07);border-color:rgba(124,58,237,0.16);color:rgba(30,27,75,0.52)}
+/* CTA */
+body.light .cta-glow{display:block;background:radial-gradient(ellipse,rgba(168,85,247,0.2) 0%,transparent 70%)}
+body.light .cta-section{background:rgba(255,255,255,0.45);backdrop-filter:blur(12px)}
+/* FOOTER */
+body.light footer{background:rgba(255,255,255,0.55);border-color:rgba(139,92,246,0.14);backdrop-filter:blur(12px)}
+body.light .footer-logo{color:#7c3aed}
+body.light .footer-links a{color:rgba(30,27,75,0.42)}
+body.light .footer-links a:hover{color:#1e1b4b}
+body.light .footer-copy{color:rgba(30,27,75,0.3)}
+body.light .day-btn{background:rgba(255,255,255,.6);color:rgba(26,22,48,.6)}
+body.light .day-btn.active{background:rgba(124,58,237,.1);color:var(--amber)}
+body.light .hero-install{background:rgba(255,255,255,.6)}
+body.light .btn-outline{border-color:rgba(124,58,237,.2);color:rgba(26,22,48,.6)}
+body.light .hero h1 em{-webkit-text-fill-color:rgba(26,22,48,.5)}
+body.light #themeIcon::after{content:''}
+
+.section-h em{overflow:visible;display:inline;padding-right:16px;position:relative}
+.section-inner > .section-h,
+.section-inner > div > .section-h{overflow:visible;clip:unset;white-space:normal}
+
+
+body .section-h, body .hero h1 { clip-path: none !important; -webkit-clip-path: none !important; }
+body .section-inner { overflow: visible !important; clip-path: none !important; }
+
+
+/* ── WORKFLOW TIMELINE ── */
+.wf-layout{display:grid;grid-template-columns:1fr 380px;gap:24px;align-items:start}
+.wf-hours{display:flex;flex-direction:column;gap:6px}
+.wf-hour{display:flex;align-items:center;gap:14px;padding:12px 18px;border-radius:10px;cursor:pointer;transition:all .2s;border:1px solid transparent;position:relative}
+.wf-hour:hover{background:var(--glass);border-color:var(--glass-border)}
+.wf-hour.active{background:var(--glass);border-color:var(--border-h);box-shadow:0 4px 20px rgba(245,166,35,.1)}
+.wf-hour-time{font-family:'Space Mono',monospace;font-size:11px;color:var(--text-dim);width:44px;flex-shrink:0}
+.wf-hour-bar-wrap{flex:1;height:8px;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden}
+.wf-hour-bar{height:100%;border-radius:4px;transition:width .5s cubic-bezier(.34,1.56,.64,1)}
+.wf-hour-tag{font-family:'Space Mono',monospace;font-size:10px;padding:2px 9px;border-radius:50px;flex-shrink:0;letter-spacing:.06em;font-weight:700}
+.wf-hour-tag.deep{background:rgba(62,207,142,.15);color:#3ecf8e;border:1px solid rgba(62,207,142,.25)}
+.wf-hour-tag.shallow{background:rgba(245,200,66,.15);color:#f5c842;border:1px solid rgba(245,200,66,.25)}
+.wf-hour-tag.escape{background:rgba(241,96,96,.15);color:#f16060;border:1px solid rgba(241,96,96,.25)}
+.wf-hour-tag.idle{background:rgba(255,255,255,.06);color:var(--text-dim);border:1px solid var(--border)}
+.wf-hour-score{font-family:'Space Mono',monospace;font-size:11px;color:var(--text-dim);width:28px;text-align:right;flex-shrink:0}
+.wf-hour.active .wf-hour-time{color:var(--amber)}
+.wf-hour.active .wf-hour-score{color:var(--amber)}
+
+/* PANEL */
+.wf-panel{padding:32px;min-height:340px;position:sticky;top:100px}
+.wf-panel-time{font-family:'Space Mono',monospace;font-size:11px;color:var(--text-dim);letter-spacing:.1em;margin-bottom:16px}
+.wf-panel-title{font-family:'Fraunces',serif;font-size:22px;font-weight:600;margin-bottom:8px;line-height:1.25}
+.wf-panel-subtitle{font-size:13.5px;color:var(--text-muted);margin-bottom:24px;line-height:1.6}
+.wf-panel-score-row{display:flex;align-items:center;gap:16px;margin-bottom:24px}
+.wf-panel-score-num{font-family:'Fraunces',serif;font-size:52px;font-weight:600;line-height:1;transition:color .3s}
+.wf-panel-score-lbl{font-size:12px;color:var(--text-muted);line-height:1.5}
+.wf-panel-log{background:rgba(0,0,0,.2);border-radius:8px;padding:16px;font-family:'Space Mono',monospace;font-size:11.5px;line-height:1.9;border:1px solid rgba(255,255,255,.06)}
+.wf-log-line{display:flex;gap:8px;opacity:0;transform:translateX(-4px);transition:opacity .25s,transform .25s}
+.wf-log-line.v{opacity:1;transform:translateX(0)}
+.wf-log-ts{color:var(--text-dim);flex-shrink:0}
+.wf-log-msg{color:var(--text-muted)}
+.wf-log-msg.hi{color:var(--amber)}
+.wf-log-msg.good{color:#3ecf8e}
+.wf-log-msg.warn{color:#f16060}
+.wf-panel-ridge-note{margin-top:16px;padding:12px 14px;border-radius:6px;background:var(--amber-glow);border:1px solid rgba(245,166,35,.2);font-family:'Space Mono',monospace;font-size:11px;color:var(--amber);line-height:1.7}
+
+/* COUNTERS */
+.wf-counters{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:24px}
+.wf-counter-card{padding:28px 24px;text-align:center}
+.wf-counter-num{font-family:'Fraunces',serif;font-size:36px;font-weight:600;color:var(--amber);margin-bottom:6px;transition:color .3s}
+.wf-counter-label{font-size:12.5px;color:var(--text-muted);line-height:1.5}
+
+/* LIGHT MODE OVERRIDES */
+body.light .wf-hour:hover{background:rgba(255,255,255,.7)}
+body.light .wf-hour.active{background:rgba(255,255,255,.8);border-color:rgba(139,92,246,.3);box-shadow:0 4px 20px rgba(124,58,237,.1)}
+body.light .wf-hour-bar-wrap{background:rgba(124,58,237,.08)}
+body.light .wf-panel-log{background:#0f0a1e;border-color:rgba(139,92,246,.4);box-shadow:0 4px 20px rgba(124,58,237,0.2)}
+body.light .wf-panel-log .wf-log-ts{color:rgba(196,181,253,0.55)}
+body.light .wf-panel-log .wf-log-msg{color:rgba(224,218,255,0.85)}
+body.light .wf-panel-log .wf-log-msg.hi{color:#c084fc}
+body.light .wf-panel-log .wf-log-msg.good{color:#4ade80}
+body.light .wf-panel-log .wf-log-msg.warn{color:#f87171}
+body.light .wf-panel{background:rgba(255,255,255,0.97)!important;border-color:rgba(139,92,246,0.25)!important;box-shadow:0 8px 40px rgba(124,58,237,0.15)!important}
+body.light .wf-panel-time{color:rgba(30,27,75,0.45)}
+body.light .wf-panel-title{color:#1e1b4b}
+body.light .wf-panel-subtitle{color:rgba(30,27,75,0.62)}
+body.light .wf-panel-score-lbl{color:rgba(30,27,75,0.5)}
+body.light .wf-panel-ridge-note{background:rgba(124,58,237,.1);border-color:rgba(124,58,237,.25);color:#7c3aed}
+body.light .wf-counter-card{background:rgba(255,255,255,0.95)!important;border-color:rgba(139,92,246,0.2)!important;box-shadow:0 4px 20px rgba(124,58,237,0.1)!important}
+body.light .wf-counter-num{color:#7c3aed}
+body.light .wf-counter-label{color:rgba(30,27,75,0.58)}
+body.light .wf-hour.active .wf-hour-time{color:#7c3aed}
+body.light .wf-hour.active .wf-hour-score{color:#7c3aed}
+
+@media(max-width:1024px){
+  .wf-layout{grid-template-columns:1fr}
+  .wf-panel{position:static;min-height:auto}
+  .wf-counters{grid-template-columns:repeat(2,1fr)}
+}
+@media(max-width:600px){
+  .wf-counters{grid-template-columns:1fr 1fr}
+}
+
+</style>
+</head>
+<body>
+
+<div id="cursor"></div>
+<div id="cursor-ring"></div>
+<div class="blob-wrap"><div class="blob blob1"></div><div class="blob blob2"></div><div class="blob blob3"></div></div>
+<div class="grid-pattern"></div>
+
+<!-- ═══ NAV ═══ -->
+<nav id="nav">
+  <a href="#" class="nav-logo">Ridge CLI.</a>
+  <ul class="nav-links">
+    <li><a href="#how">How it works</a></li>
+    <li><a href="#simulate">Simulate</a></li>
+    <li><a href="#categorize">Categorizer</a></li>
+    <li><a href="#faq">FAQ</a></li>
+  </ul>
+  <div class="nav-right">
+    <!-- LANGUAGE SWITCHER -->
+    <div class="lang-switcher" id="langSwitcher">
+      <button class="lang-btn active" data-lang="en" onclick="setLang('en',this)">🇺🇸 EN</button>
+      <button class="lang-btn" data-lang="es" onclick="setLang('es',this)">🇪🇸 ES</button>
+    </div>
+    <!-- THEME TOGGLE -->
+    <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Toggle light/dark mode">
+      <span id="themeIcon">☀</span>
+    </button>
+    <a href="https://github.com/sovit-nayak/ridge-cli" target="_blank" rel="noopener" class="nav-gh" target="_blank">GitHub ↗</a>
+    <a href="#install" class="nav-cta" data-i18n="nav_cta">Get Ridge CLI →</a>
+  </div>
+</nav>
+
+<!-- ═══ HERO ═══ -->
+<section style="position:relative;z-index:1;padding:0">
+  <div class="hero">
+    <div class="hero-left">
+      <div class="hero-badge fade-up"><span class="hero-badge-dot"></span>v1.0 now available · open source · free forever</div>
+      <h1 class="fade-up stagger-1">Know where your<br><em>attention</em> <span class="grad">actually goes</span></h1>
+      <p class="hero-sub fade-up stagger-2">Ridge CLI runs silently in your terminal, reads your browser history, and builds a precise picture of your real focus habits. No extension needed. No cloud. No subscription.</p>
+      <div class="hero-actions fade-up stagger-3">
+        <a href="#install" class="btn-main">↓ Install free</a>
+        <a href="https://github.com/sovit-nayak/ridge-cli" target="_blank" rel="noopener" class="btn-outline">☆ Star on GitHub</a>
+      </div>
+      <div class="hero-install fade-up" id="heroInstall" onclick="copyInstall()">
+        <span class="hero-install-label" id="heroInstallLabel">INSTALL</span>
+        <span class="hero-install-cmd">pip install ridge-cli</span>
+        <span class="hero-install-copy" id="copyLbl">⎘ copy</span>
+        <span class="copy-flash" id="copyFlash">✓ copied</span>
+      </div>
+    </div>
+    <div class="hero-right fade-up stagger-2">
+      <div class="hero-glow"></div>
+      <div class="terminal">
+        <div class="t-bar">
+          <span class="t-dot" style="background:#ff5f57"></span>
+          <span class="t-dot" style="background:#ffbd2e;margin-left:4px"></span>
+          <span class="t-dot" style="background:#28ca41;margin-left:4px"></span>
+          <span class="t-title" id="tBarTitle">ridge report</span>
+          <div style="margin-left:auto;display:flex;gap:6px" id="tDots"></div>
+        </div>
+        <div class="t-body" id="tBody" style="min-height:340px;max-height:340px"></div>
+        <div style="padding:10px 20px 14px;display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--border)">
+          <div style="display:flex;gap:6px" id="tNavDots"></div>
+          <span style="font-family:'Space Mono',monospace;font-size:10px;color:var(--text-dim)" id="tProgress">1 / 5</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SOCIAL PROOF -->
+<div class="social-proof">
+  <div class="sp-item"><span class="sp-num">Mac · Linux · Windows</span>All platforms</div>
+  <div class="sp-divider"></div>
+  <div class="sp-item"><span class="sp-num">0</span>Cloud dependencies</div>
+  <div class="sp-divider"></div>
+  <div class="sp-item"><span class="sp-num">0</span>Extensions needed</div>
+  <div class="sp-divider"></div>
+  <div class="sp-item"><span class="sp-num">MIT</span>Open source forever</div>
+</div>
+
+<!-- ═══ HOW IT WORKS ═══ -->
+<section class="section" id="how">
+  <div class="section-inner">
+    <div class="section-chip fade-up">How it works</div>
+    <h2 class="section-h fade-up">Three steps. <em>Zero friction.</em></h2>
+    <p class="section-sub fade-up">Ridge CLI works with data already on your machine. No setup wizards, no accounts required.</p>
+    <div class="how-grid">
+      <div class="glass-card how-card fade-up"><div class="spotlight"></div>
+        <div class="how-num">01 ——</div><span class="how-icon">⚙️</span>
+        <div class="how-title">Install & Start</div>
+        <p class="how-desc">One pip install. Ridge CLI creates a hidden folder and starts a daemon that polls every 30 seconds. Zero configuration required.</p>
+        <code class="how-code">ridge start "deep work"</code>
+      </div>
+      <div class="glass-card how-card fade-up stagger-1"><div class="spotlight"></div>
+        <div class="how-num">02 ——</div><span class="how-icon">👁️</span>
+        <div class="how-title">Ridge CLI Watches</div>
+        <p class="how-desc">Reads browser history directly from disk. Reads active app via psutil. Auto-categorizes every domain. Everything stored locally in SQLite.</p>
+        <code class="how-code">~/.ridge/data.db</code>
+      </div>
+      <div class="glass-card how-card fade-up stagger-2"><div class="spotlight"></div>
+        <div class="how-num">03 ——</div><span class="how-icon">📊</span>
+        <div class="how-title">See The Truth</div>
+        <p class="how-desc">Pull a terminal report anytime. Spin up a local dashboard. Get ML-powered insights on your patterns — all from your data.</p>
+        <code class="how-code">ridge report</code>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ FEATURES ═══ -->
+<section class="section" style="background:rgba(13,13,18,.5)">
+  <div class="section-inner">
+    <div class="section-chip fade-up">Features</div>
+    <h2 class="section-h fade-up">Built for people who care about <em>their time.</em></h2>
+    <div class="bento">
+      <div class="glass-card bento-card fade-up"><div class="spotlight"></div>
+        <div class="bento-tag">TRACKING</div>
+        <div class="bento-title">Automatic browser & app monitoring</div>
+        <p class="bento-desc">Ridge CLI reads your local browser history directly from disk. No extension needed — works across Chrome, Firefox, and Safari simultaneously.</p>
+        <div class="bento-list">
+          <div class="bento-item"><div class="bento-item-dot"></div>Chrome, Firefox, Safari history</div>
+          <div class="bento-item"><div class="bento-item-dot"></div>Active app tracking via psutil</div>
+          <div class="bento-item"><div class="bento-item-dot"></div>Context switch detection</div>
+          <div class="bento-item"><div class="bento-item-dot"></div>Auto site categorization</div>
+        </div>
+      </div>
+      <div class="glass-card bento-card fade-up stagger-1"><div class="spotlight"></div>
+        <div class="bento-tag">REPORTS</div>
+        <div class="bento-title">Terminal reports that don't lie to you</div>
+        <p class="bento-desc">Daily and weekly focus scores, distraction breakdowns, and your attention timeline — rendered beautifully in your terminal.</p>
+        <div class="bento-list">
+          <div class="bento-item"><div class="bento-item-dot"></div>Real-time focus score 0–100</div>
+          <div class="bento-item"><div class="bento-item-dot"></div>Hourly attention heatmap</div>
+          <div class="bento-item"><div class="bento-item-dot"></div>Top distractions ranked</div>
+          <div class="bento-item"><div class="bento-item-dot"></div>Week-over-week comparison</div>
+        </div>
+      </div>
+      <div class="glass-card bento-card fade-up"><div class="spotlight"></div>
+        <div class="bento-tag">ML / AI</div>
+        <div class="bento-title">Predicts your distraction before it hits</div>
+        <p class="bento-desc">Prophet forecasting and local HuggingFace models learn your personal distraction curve and warn you before you drift.</p>
+        <div class="bento-list">
+          <div class="bento-item"><div class="bento-item-dot"></div>Personal distraction curve</div>
+          <div class="bento-item"><div class="bento-item-dot"></div>Pre-drift warnings</div>
+          <div class="bento-item"><div class="bento-item-dot"></div>Anomaly detection</div>
+          <div class="bento-item"><div class="bento-item-dot"></div>All models run locally</div>
+        </div>
+      </div>
+      <div class="glass-card bento-card fade-up stagger-1"><div class="spotlight"></div>
+        <div class="bento-tag">DASHBOARD</div>
+        <div class="bento-title">Local Streamlit dashboard, zero cloud</div>
+        <p class="bento-desc">One command spins up a full visual dashboard at localhost. Calendar heatmaps, focus trends, site breakdowns — your data, your machine.</p>
+        <div class="bento-list">
+          <div class="bento-item"><div class="bento-item-dot"></div>Calendar focus heatmap</div>
+          <div class="bento-item"><div class="bento-item-dot"></div>Session timeline view</div>
+          <div class="bento-item"><div class="bento-item-dot"></div>AI weekly coaching letter</div>
+          <div class="bento-item"><div class="bento-item-dot"></div>PDF yearly review export</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ ATTENTION TIMELINE ═══ -->
+<section class="section tl-section" id="timeline">
+  <div class="section-inner">
+    <div class="section-chip fade-up">Attention Timeline</div>
+    <h2 class="section-h fade-up">See your day <em>as it really was.</em></h2>
+    <p class="section-sub fade-up">Drag the scrubber to explore a typical workday. Ridge CLI reveals exactly when focus collapsed — and why.</p>
+    <div class="tl-demo fade-up">
+      <div class="tl-legend">
+        <div class="tl-leg"><div class="tl-leg-dot" style="background:var(--green)"></div>Deep Work</div>
+        <div class="tl-leg"><div class="tl-leg-dot" style="background:var(--yellow)"></div>Shallow</div>
+        <div class="tl-leg"><div class="tl-leg-dot" style="background:var(--red)"></div>Escape</div>
+        <div class="tl-leg"><div class="tl-leg-dot" style="background:var(--text-dim)"></div>Idle</div>
+      </div>
+      <div class="tl-track" id="tlTrack"></div>
+      <div class="tl-time-labels" id="tlTimeLabels"></div>
+      <input type="range" class="tl-scrubber" id="tlScrubber" min="0" max="29" value="29"/>
+      <div class="tl-insight" id="tlInsight">← Drag the scrubber to reveal your day</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ SIMULATOR ═══ -->
+<section class="section" id="simulate">
+  <div class="section-inner">
+    <div class="section-chip fade-up">Focus Simulator</div>
+    <h2 class="section-h fade-up">What does your day <em>actually score?</em></h2>
+    <p class="section-sub fade-up">Pick a day type. Adjust the sliders. Watch Ridge CLI calculate your real focus score live.</p>
+    <div class="sim-layout">
+      <div class="fade-up">
+        <div class="sim-label">Day Type</div>
+        <div class="day-picker">
+          <button class="day-btn active" data-type="deep" onclick="setDay(this)"><span>🧠 Deep Work Day</span><span class="ds">Target 85+</span></button>
+          <button class="day-btn" data-type="meetings" onclick="setDay(this)"><span>📅 Meeting Heavy</span><span class="ds">Target 55–70</span></button>
+          <button class="day-btn" data-type="distracted" onclick="setDay(this)"><span>📱 Distracted Day</span><span class="ds">Target 30–50</span></button>
+          <button class="day-btn" data-type="recovery" onclick="setDay(this)"><span>🌱 Recovery Day</span><span class="ds">Target 60–75</span></button>
+        </div>
+        <div class="slider-group">
+          <div class="slider-row"><span class="slider-name">Deep work hours</span><span class="slider-val" id="dwV">5h</span></div>
+          <input type="range" class="ridge-slider" id="dwS" min="0" max="8" value="5" oninput="updateSim()"/>
+        </div>
+        <div class="slider-group">
+          <div class="slider-row"><span class="slider-name">Escape / distraction</span><span class="slider-val" id="escV" style="color:var(--red)">1h</span></div>
+          <input type="range" class="ridge-slider" id="escS" min="0" max="6" value="1" oninput="updateSim()"/>
+        </div>
+        <div class="slider-group">
+          <div class="slider-row"><span class="slider-name">Context switches</span><span class="slider-val" id="csV" style="color:var(--yellow)">12</span></div>
+          <input type="range" class="ridge-slider" id="csS" min="0" max="40" value="12" oninput="updateSim()"/>
+        </div>
+      </div>
+      <div class="fade-up stagger-1">
+        <div class="sim-card">
+          <div class="sim-card-header">
+            <span class="sim-card-title">RIDGE REPORT · LIVE PREVIEW</span>
+            <span style="font-family:'Space Mono',monospace;font-size:10px;color:var(--text-dim)">TODAY</span>
+          </div>
+          <div class="sim-score-wrap">
+            <div class="sim-score" id="simScore">78</div>
+            <div class="sim-score-lbl" id="simScoreLbl">Good focus day</div>
+          </div>
+          <div class="sim-bars-wrap">
+            <div class="sim-bar-row">
+              <span class="sim-bar-name">Deep</span>
+              <div class="sim-bar-track"><div class="sim-bar-fill" id="sbDeep" style="background:var(--green);width:65%"></div></div>
+              <span class="sim-bar-val" id="svDeep">5h</span>
+            </div>
+            <div class="sim-bar-row">
+              <span class="sim-bar-name">Shallow</span>
+              <div class="sim-bar-track"><div class="sim-bar-fill" id="sbShallow" style="background:var(--yellow);width:25%"></div></div>
+              <span class="sim-bar-val" id="svShallow">2h</span>
+            </div>
+            <div class="sim-bar-row">
+              <span class="sim-bar-name">Escape</span>
+              <div class="sim-bar-track"><div class="sim-bar-fill" id="sbEscape" style="background:var(--red);width:10%"></div></div>
+              <span class="sim-bar-val" id="svEscape">1h</span>
+            </div>
+          </div>
+          <div class="sim-tl-wrap">
+            <div class="sim-tl-label">HOURLY PATTERN</div>
+            <div class="sim-tl-blocks" id="simTl"></div>
+          </div>
+          <div class="sim-insight-wrap">
+            <div class="sim-insight-txt" id="simIns" style="background:var(--amber-glow);border:1px solid rgba(245,166,35,.2);color:var(--amber)">↑ Strong start. Watch for afternoon drift.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ SITE CATEGORIZER ═══ -->
+<section class="section" id="categorize" style="background:rgba(13,13,18,.5)">
+  <div class="section-inner">
+    <div class="section-chip fade-up">Live Categorizer</div>
+    <h2 class="section-h fade-up">How does Ridge CLI <em>see your sites?</em></h2>
+    <p class="section-sub fade-up">Type any website URL and see exactly how Ridge CLI would categorize it — deep work, shallow, or escape. Try the examples.</p>
+    <div class="fade-up" style="margin-top:48px">
+      <div class="cat-row">
+        <input class="cat-input" id="catIn" type="text" placeholder="enter any website e.g. notion.so, reddit.com, figma.com..."/>
+        <button class="cat-go" onclick="doCat()">Categorize →</button>
+      </div>
+      <div class="cat-chips">
+        <span class="cat-chip" onclick="qCat('github.com')">github.com</span>
+        <span class="cat-chip" onclick="qCat('reddit.com')">reddit.com</span>
+        <span class="cat-chip" onclick="qCat('notion.so')">notion.so</span>
+        <span class="cat-chip" onclick="qCat('youtube.com')">youtube.com</span>
+        <span class="cat-chip" onclick="qCat('stackoverflow.com')">stackoverflow.com</span>
+        <span class="cat-chip" onclick="qCat('twitter.com')">twitter.com</span>
+        <span class="cat-chip" onclick="qCat('figma.com')">figma.com</span>
+        <span class="cat-chip" onclick="qCat('netflix.com')">netflix.com</span>
+        <span class="cat-chip" onclick="qCat('linear.app')">linear.app</span>
+        <span class="cat-chip" onclick="qCat('docs.google.com')">docs.google.com</span>
+        <span class="cat-chip" onclick="qCat('slack.com')">slack.com</span>
+        <span class="cat-chip" onclick="qCat('instagram.com')">instagram.com</span>
+      </div>
+      <div class="cat-result" id="catResult">
+        <div class="cat-empty">← Enter a URL above or click an example chip<br>to see how Ridge CLI categorizes it</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ COST CALCULATOR ═══ -->
+<section class="section" id="calculator">
+  <div class="section-inner">
+    <div class="section-chip fade-up">Cost Calculator</div>
+    <h2 class="section-h fade-up">Your distraction has a <em>real dollar cost.</em></h2>
+    <p class="section-sub fade-up">Adjust your hourly rate and distraction habits. See what unfocused time is actually costing you every year.</p>
+    <div class="calc-layout">
+      <div class="calc-inputs fade-up">
+        <div>
+          <div class="sim-label">HOURLY RATE</div>
+          <div class="slider-row"><span class="slider-name">Rate</span><span class="slider-val">$<span id="rV">75</span>/hr</span></div>
+          <input type="range" class="ridge-slider" id="rS" min="20" max="300" value="75" oninput="updateCalc()"/>
+        </div>
+        <div>
+          <div class="sim-label" style="margin-top:8px">DISTRACTION HOURS / DAY</div>
+          <div class="slider-row"><span class="slider-name">Hours</span><span class="slider-val" style="color:var(--red)"><span id="dV">2</span>h/day</span></div>
+          <input type="range" class="ridge-slider" id="dS" min="0.5" max="6" step="0.5" value="2" oninput="updateCalc()"/>
+        </div>
+        <div>
+          <div class="sim-label" style="margin-top:8px">CONTEXT SWITCHES / DAY</div>
+          <div class="slider-row"><span class="slider-name">Switches</span><span class="slider-val" style="color:var(--yellow)"><span id="swV">18</span>/day</span></div>
+          <input type="range" class="ridge-slider" id="swS" min="5" max="50" value="18" oninput="updateCalc()"/>
+        </div>
+        <div>
+          <div class="sim-label" style="margin-top:8px">RECOVERY TIME / SWITCH</div>
+          <div class="slider-row"><span class="slider-name">Minutes</span><span class="slider-val"><span id="recV">15</span> min</span></div>
+          <input type="range" class="ridge-slider" id="recS" min="5" max="30" value="15" oninput="updateCalc()"/>
+        </div>
+      </div>
+      <div class="fade-up stagger-1">
+        <div class="calc-result">
+          <div class="calc-lbl">ANNUAL COST OF DISTRACTION</div>
+          <div class="calc-num" id="calcNum">$39k</div>
+          <div class="calc-period">based on 250 working days per year</div>
+          <div class="calc-breakdown">
+            <div class="calc-row"><span class="calc-row-label">Direct escape time</span><span class="calc-row-val" id="calcDirect">$37,500</span></div>
+            <div class="calc-row"><span class="calc-row-label">Recovery time lost</span><span class="calc-row-val" id="calcRec">$14,062</span></div>
+            <div class="calc-row"><span class="calc-row-label">Cost per day</span><span class="calc-row-val" id="calcDay">$205</span></div>
+            <div class="calc-row"><span class="calc-row-label">Cost per week</span><span class="calc-row-val" id="calcWeek">$1,025</span></div>
+          </div>
+          <button class="calc-share-btn" onclick="shareCalc()">⎘ Copy result to share</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ COMMAND PLAYGROUND ═══ -->
+<section class="section" id="commands" style="background:rgba(13,13,18,.5)">
+  <div class="section-inner">
+    <div class="section-chip fade-up">Commands</div>
+    <h2 class="section-h fade-up">Click any command. <em>See it run.</em></h2>
+    <div class="cmd-layout">
+      <div class="cmd-list fade-up">
+        <div class="cmd-row active" onclick="showCmd('start')" data-c="start"><span class="cmd-name">ridge start</span><span class="cmd-desc">Begin a focus session</span></div>
+        <div class="cmd-row" onclick="showCmd('status')" data-c="status"><span class="cmd-name">ridge status</span><span class="cmd-desc">Live session stats</span></div>
+        <div class="cmd-row" onclick="showCmd('report')" data-c="report"><span class="cmd-name">ridge report</span><span class="cmd-desc">Full report for today</span></div>
+        <div class="cmd-row" onclick="showCmd('week')" data-c="week"><span class="cmd-name">ridge week</span><span class="cmd-desc">7-day summary & trends</span></div>
+        <div class="cmd-row" onclick="showCmd('sites')" data-c="sites"><span class="cmd-name">ridge sites</span><span class="cmd-desc">Top sites by category</span></div>
+        <div class="cmd-row" onclick="showCmd('insights')" data-c="insights"><span class="cmd-name">ridge insights</span><span class="cmd-desc">ML pattern analysis</span></div>
+        <div class="cmd-row" onclick="showCmd('forecast')" data-c="forecast"><span class="cmd-name">ridge forecast</span><span class="cmd-desc">Predicted focus this week</span></div>
+        <div class="cmd-row" onclick="showCmd('coach')" data-c="coach"><span class="cmd-name">ridge coach</span><span class="cmd-desc">AI weekly coaching letter</span></div>
+        <div class="cmd-row" onclick="showCmd('dashboard')" data-c="dashboard"><span class="cmd-name">ridge dashboard</span><span class="cmd-desc">Open local Streamlit UI</span></div>
+      </div>
+      <div class="cmd-terminal fade-up stagger-1">
+        <div class="cmd-t-bar"><span class="cmd-t-dot"></span><span id="cmdTitle" style="font-family:'Space Mono',monospace;font-size:11px;color:var(--text-dim)">ridge start</span></div>
+        <div class="cmd-t-body" id="cmdOut"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ WORKFLOW TIMELINE ═══ -->
+<section class="section" id="workflow">
+  <div class="section-inner">
+    <div class="section-chip fade-up" data-i18n-chip="workflow">Your Day With Ridge CLI</div>
+    <h2 class="section-h fade-up">Ridge CLI runs silently while <em>you just work.</em></h2>
+    <p class="section-sub fade-up">Click any hour to see exactly what Ridge CLI detects, scores, and logs — without you doing anything.</p>
+
+    <div class="wf-layout fade-up" style="margin-top:56px">
+      <!-- TIMELINE HOURS -->
+      <div class="wf-hours" id="wfHours"></div>
+
+      <!-- DETAIL PANEL -->
+      <div class="wf-panel glass-card" id="wfPanel">
+        <div class="spotlight"></div>
+        <div class="wf-panel-inner" id="wfPanelInner"></div>
+      </div>
+    </div>
+
+    <!-- LIVE COUNTERS ROW -->
+    <div class="wf-counters fade-up" id="wfCounters">
+      <div class="wf-counter-card glass-card"><div class="spotlight"></div>
+        <div class="wf-counter-num" id="wcFocus">0</div>
+        <div class="wf-counter-label">Focus score right now</div>
+      </div>
+      <div class="wf-counter-card glass-card"><div class="spotlight"></div>
+        <div class="wf-counter-num" id="wcSessions">0</div>
+        <div class="wf-counter-label">Sessions tracked today</div>
+      </div>
+      <div class="wf-counter-card glass-card"><div class="spotlight"></div>
+        <div class="wf-counter-num" id="wcDeep">0h 0m</div>
+        <div class="wf-counter-label">Deep work logged</div>
+      </div>
+      <div class="wf-counter-card glass-card"><div class="spotlight"></div>
+        <div class="wf-counter-num" id="wcSaved">$0</div>
+        <div class="wf-counter-label">Focus value protected</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+
+<!-- ═══ ROADMAP ═══ -->
+<section class="section" id="roadmap">
+  <div class="section-inner">
+    <div class="section-chip fade-up">Roadmap</div>
+    <h2 class="section-h fade-up" style="text-align:center">Built in the open. <em>Shipped for real.</em></h2>
+    <p class="section-sub fade-up" style="text-align:center;margin:0 auto">CLI first. Extension and web app next. Same data, more surfaces.</p>
+    <div class="roadmap-line">
+      <div class="rm-item active fade-up">
+        <div class="rm-dot"></div>
+        <div class="rm-content"><div class="rm-v">v1.0 — MAY 2026 · NOW</div><div class="rm-title">CLI — Core Tracking & Reports</div><div class="rm-tags"><span class="rm-tag">Browser history</span><span class="rm-tag">Focus score</span><span class="rm-tag">Daily report</span><span class="rm-tag">SQLite</span></div></div>
+      </div>
+      <div class="rm-item fade-up">
+        <div class="rm-dot"></div>
+        <div class="rm-content"><div class="rm-v">v1.5 — Q3 2026</div><div class="rm-title">Streamlit Dashboard + ML Insights</div><div class="rm-tags"><span class="rm-tag">Local dashboard</span><span class="rm-tag">HuggingFace models</span><span class="rm-tag">Prophet forecasting</span><span class="rm-tag">AI coach</span></div></div>
+      </div>
+      <div class="rm-item fade-up">
+        <div class="rm-dot"></div>
+        <div class="rm-content"><div class="rm-v">v2.0 — Q4 2026</div><div class="rm-title">Browser Extension</div><div class="rm-tags"><span class="rm-tag">Chrome</span><span class="rm-tag">Firefox</span><span class="rm-tag">Non-devs</span><span class="rm-tag">Syncs with CLI</span></div></div>
+      </div>
+      <div class="rm-item fade-up">
+        <div class="rm-dot"></div>
+        <div class="rm-content"><div class="rm-v">v3.0 — Q2 2027</div><div class="rm-title">Ridge CLI Web — SaaS & Teams</div><div class="rm-tags"><span class="rm-tag">Cloud sync opt-in</span><span class="rm-tag">Team dashboards</span><span class="rm-tag">Mobile PWA</span><span class="rm-tag">Accountability</span></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ FAQ ═══ -->
+<section class="section" id="faq" style="background:rgba(13,13,18,.5)">
+  <div class="section-inner">
+    <div class="section-chip fade-up" style="margin:0 auto 20px;display:flex;width:fit-content">FAQ</div>
+    <h2 class="section-h fade-up" style="text-align:center">Common <em>questions.</em></h2>
+    <div class="faq-list" id="faqList">
+      <div class="faq-item" onclick="toggleFaq(this)"><div class="faq-question">Does Ridge CLI send my data anywhere?<span class="faq-icon">+</span></div><div class="faq-answer"><div class="faq-answer-inner">Never. Everything stays in ~/.ridge/data.db on your machine. Ridge CLI has zero network calls by default. The optional AI coaching feature uses the Claude API but you explicitly opt in — your raw browsing data is never sent, only processed summaries.</div></div></div>
+      <div class="faq-item" onclick="toggleFaq(this)"><div class="faq-question">Do I need to install SQLite separately?<span class="faq-icon">+</span></div><div class="faq-answer"><div class="faq-answer-inner">No. SQLite is a file, not a server. Python manages it automatically the first time you run ridge start. A file called data.db appears in ~/.ridge/ — that's your entire database. No installation, no configuration, no running processes.</div></div></div>
+      <div class="faq-item" onclick="toggleFaq(this)"><div class="faq-question">Which browsers does Ridge CLI support?<span class="faq-icon">+</span></div><div class="faq-answer"><div class="faq-answer-inner">Ridge CLI reads history from Chrome, Firefox, and Safari simultaneously. It accesses the SQLite history files each browser stores locally on your machine — no extension needed. Edge and Brave support is coming in v1.1.</div></div></div>
+      <div class="faq-item" onclick="toggleFaq(this)"><div class="faq-question">What operating systems are supported?<span class="faq-icon">+</span></div><div class="faq-answer"><div class="faq-answer-inner">Mac, Linux, and Windows. The daemon uses platform-appropriate methods on each OS. macOS and Linux are the most stable at v1.0 — Windows support is fully functional but may have minor edge cases we're tracking.</div></div></div>
+      <div class="faq-item" onclick="toggleFaq(this)"><div class="faq-question">How does the ML forecasting work?<span class="faq-icon">+</span></div><div class="faq-answer"><div class="faq-answer-inner">After 14+ days of data, Ridge CLI uses Facebook Prophet to model your personal focus rhythm. It learns your weekly cycles, identifies your peak hours, and predicts likely dip periods. All models run on your CPU via local HuggingFace models — no GPU required, no API calls made.</div></div></div>
+      <div class="faq-item" onclick="toggleFaq(this)"><div class="faq-question">Is the browser extension required?<span class="faq-icon">+</span></div><div class="faq-answer"><div class="faq-answer-inner">No — Ridge CLI works without any extension by reading browser history files directly from disk. The browser extension (coming in v2.0) is an optional addition for non-developers who prefer a visual interface.</div></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ CTA ═══ -->
+<section class="cta-section">
+  <div class="cta-glow"></div>
+  <div class="section-inner" style="position:relative;z-index:1">
+    <div class="section-chip fade-up" style="margin:0 auto 24px;display:flex;width:fit-content">Open Source · Free Forever</div>
+    <h2 class="section-h fade-up" style="text-align:center;max-width:700px;margin:0 auto 20px">Start seeing the truth <em>about your attention today.</em></h2>
+    <p class="section-sub fade-up" style="text-align:center;margin:0 auto 40px">No account. No cloud. Just your data, your machine, and the truth about where your focus actually goes.</p>
+    <div class="fade-up" style="display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap">
+      <a href="#install" class="btn-main">Install Ridge CLI free →</a>
+      <a href="https://github.com/sovit-nayak/ridge-cli" target="_blank" rel="noopener" class="btn-outline">View source on GitHub</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-logo">Ridge CLI.</div>
+  <ul class="footer-links">
+    <li><a href="#">Docs</a></li><li><a href="#">GitHub</a></li><li><a href="#">Changelog</a></li><li><a href="#">Twitter</a></li><li><a href="#">Privacy</a></li>
+  </ul>
+  <div class="footer-copy">MIT License · Built in public · 2026</div>
+</footer>
+
+<script>
+// ── CURSOR ──
+const cur=document.getElementById('cursor'),ring=document.getElementById('cursor-ring');
+let mx=0,my=0,rx=0,ry=0;
+document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;cur.style.left=mx+'px';cur.style.top=my+'px'});
+(function raf(){rx+=(mx-rx)*.12;ry+=(my-ry)*.12;ring.style.left=rx+'px';ring.style.top=ry+'px';requestAnimationFrame(raf)})();
+document.querySelectorAll('a,button,.cmd-row,.day-btn,.cat-chip,.hero-install,.faq-item').forEach(el=>{
+  el.addEventListener('mouseenter',()=>{cur.style.width='14px';cur.style.height='14px';ring.style.width='48px';ring.style.height='48px';ring.style.borderColor='rgba(245,166,35,.6)'});
+  el.addEventListener('mouseleave',()=>{cur.style.width='6px';cur.style.height='6px';ring.style.width='32px';ring.style.height='32px';ring.style.borderColor='rgba(245,166,35,.35)'});
+});
+
+// SPOTLIGHT ON GLASS CARDS
+document.querySelectorAll('.glass-card').forEach(card=>{
+  const spot=card.querySelector('.spotlight');
+  if(!spot)return;
+  card.addEventListener('mousemove',e=>{
+    const r=card.getBoundingClientRect();
+    spot.style.left=(e.clientX-r.left)+'px';
+    spot.style.top=(e.clientY-r.top)+'px';
+  });
+});
+
+// ── NAV ──
+window.addEventListener('scroll',()=>document.getElementById('nav').classList.toggle('scrolled',scrollY>20));
+
+// ── FADE UP ──
+new IntersectionObserver(entries=>entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('v');}}),{threshold:.08}).observe.call(
+  new IntersectionObserver(entries=>entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('v')}}),{threshold:.08}),
+  document.body
+);
+const fo=new IntersectionObserver(entries=>entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('v');fo.unobserve(e.target)}}),{threshold:.08});
+document.querySelectorAll('.fade-up').forEach(el=>fo.observe(el));
+
+// ── COPY INSTALL ──
+function copyInstall(){
+  navigator.clipboard.writeText('pip install ridge-cli');
+  const f=document.getElementById('copyFlash');
+  f.classList.add('show');
+  setTimeout(()=>f.classList.remove('show'),2000);
+}
+
+// ── TERMINAL ──
+const cmdData={
+  'ridge start':[{t:'c',s:'ridge start "deep work session"'},{t:'o',s:'⚡ Session started',c:'tg'},{t:'o',s:'  Task    deep work session'},{t:'o',s:'  Started 09:14 AM'},{t:'o',s:'  Daemon  running ✓',c:'tg'},{t:'o',s:'  Storage ~/.ridge/data.db'},{t:'b'},{t:'o',s:'Ridge CLI is now watching silently.',c:'ta'},{t:'x'}],
+  'ridge status':[{t:'c',s:'ridge status'},{t:'o',s:'─────────────────────────────'},{t:'o',s:'  Task    deep work session'},{t:'o',s:'  Elapsed 1h 24m',c:'ta'},{t:'o',s:'  Score   78 / 100',c:'ta'},{t:'o',s:'  Mode    🟢 Deep Work'},{t:'o',s:'  Switches 6  (good)'},{t:'o',s:'─────────────────────────────'},{t:'x'}],
+  'ridge report':[{t:'c',s:'ridge report'},{t:'o',s:'─────────────────────────────'},{t:'o',s:'  📊 Focus Report — Today'},{t:'o',s:'─────────────────────────────'},{t:'o',s:'  🟢 Deep Work   3h 42m ████████████',c:'tg'},{t:'o',s:'  🟡 Shallow     1h 08m ████'},{t:'o',s:'  🔴 Escape      0h 38m ██',c:'tr'},{t:'o',s:'─────────────────────────────'},{t:'o',s:'  Score   81 / 100 ↑ +12',c:'ta'},{t:'o',s:'  Peak    9:00 – 11:30am'},{t:'o',s:'  Top     youtube.com  22m',c:'tr'},{t:'x'}],
+  'ridge week':[{t:'c',s:'ridge week'},{t:'o',s:'  Weekly ─────────────────────'},{t:'o',s:'  Mon  ████████░░  72'},{t:'o',s:'  Tue  ██████░░░░  58'},{t:'o',s:'  Wed  ██████████  91',c:'tg'},{t:'o',s:'  Thu  █████░░░░░  52',c:'tr'},{t:'o',s:'  Fri  ████████░░  78'},{t:'o',s:'  ─────────────────────────'},{t:'o',s:'  Avg  70.2  ↑ +4 vs prev',c:'ta'},{t:'x'}],
+  'ridge sites':[{t:'c',s:'ridge sites'},{t:'o',s:'  Top Sites This Week ─────────'},{t:'o',s:'  1  github.com     2h 40m  🟢',c:'tg'},{t:'o',s:'  2  notion.so      1h 22m  🟢'},{t:'o',s:'  3  slack.com      0h 58m  🟡'},{t:'o',s:'  4  youtube.com    0h 45m  🔴',c:'tr'},{t:'o',s:'  5  twitter.com    0h 28m  🔴',c:'tr'},{t:'x'}],
+  'ridge insights':[{t:'c',s:'ridge insights'},{t:'o',s:'  🧠 ML Insights ──────────────'},{t:'o',s:'  Loading local models...',c:'ta'},{t:'b'},{t:'o',s:'  Pattern 1  Afternoon drift',c:'ta'},{t:'o',s:'  Confidence  87%  every weekday'},{t:'b'},{t:'o',s:'  Pattern 2  Twitter spirals',c:'ta'},{t:'o',s:'  Avg duration  23 min not 5'},{t:'b'},{t:'o',s:'  Suggestion  Protect 9–11am',c:'tg'},{t:'x'}],
+  'ridge forecast':[{t:'c',s:'ridge forecast'},{t:'o',s:'  📈 Forecast ─────────────────'},{t:'o',s:'  Mon  ████████░░  76'},{t:'o',s:'  Tue  ██████░░░░  61  ⚠ mtgs',c:'ta'},{t:'o',s:'  Wed  █████░░░░░  54  ⚠ low',c:'tr'},{t:'o',s:'  Thu  ████████░░  74'},{t:'o',s:'  Fri  █████████░  82',c:'tg'},{t:'o',s:'  Based on 47 days of data',c:'td'},{t:'x'}],
+  'ridge coach':[{t:'c',s:'ridge coach'},{t:'o',s:'  ✉ Weekly AI Letter ──────────'},{t:'b'},{t:'o',s:'  Avg this week: 70/100'},{t:'o',s:'  Wednesday: extraordinary 91.'},{t:'b'},{t:'o',s:'  Honest: you lost 3.2hrs',c:'ta'},{t:'o',s:'  to YouTube. Each visit < 5min.',c:'tr'},{t:'b'},{t:'o',s:'  Try: close browser after tasks.',c:'tg'},{t:'x'}],
+  'ridge dashboard':[{t:'c',s:'ridge dashboard'},{t:'o',s:'  Launching dashboard...',c:'ta'},{t:'o',s:'  Connecting to data.db...'},{t:'o',s:'  Loading Streamlit...'},{t:'b'},{t:'o',s:'  ✓ Ready',c:'tg'},{t:'o',s:'  → http://localhost:8501',c:'ta'},{t:'b'},{t:'o',s:'  Ctrl+C to stop'},{t:'x'}],
+  'ridge help':[{t:'c',s:'ridge help'},{t:'o',s:'  Ridge CLI v1.0.0 ────────────────'},{t:'o',s:'  start      Begin session'},{t:'o',s:'  stop       End session'},{t:'o',s:'  status     Live stats'},{t:'o',s:'  report     Today report'},{t:'o',s:'  week       7-day summary'},{t:'o',s:'  sites      Site breakdown'},{t:'o',s:'  insights   ML patterns'},{t:'o',s:'  forecast   Score prediction'},{t:'o',s:'  coach      AI letter'},{t:'o',s:'  dashboard  Local UI'},{t:'x'}],
+};
+function renderT(lines,container){
+  container.innerHTML='';
+  lines.forEach((l,i)=>{
+    setTimeout(()=>{
+      const el=document.createElement('div');el.className='tl';
+      if(l.t==='c')el.innerHTML=`<span class="tp">❯</span><span class="tc"> ${l.s}</span>`;
+      else if(l.t==='x')el.innerHTML=`<span class="tp">❯</span><span class="t-cursor"></span>`;
+      else if(l.t==='b')el.innerHTML='&nbsp;';
+      else el.innerHTML=`<span class="${l.c||'to'}">${l.s}</span>`;
+      container.appendChild(el);
+      requestAnimationFrame(()=>el.classList.add('v'));
+      container.scrollTop=container.scrollHeight;
+    },i*110);
+  });
+}
+// ── AUTO-CYCLING HERO TERMINAL ──
+const showcaseOrder=['ridge report','ridge week','ridge insights','ridge forecast','ridge coach'];
+const showcaseLabels=['ridge report','ridge week','ridge insights','ridge forecast','ridge coach'];
+let showcaseIdx=0;
+let showcaseTimer=null;
+
+function buildNavDots(){
+  const wrap=document.getElementById('tNavDots');
+  wrap.innerHTML='';
+  showcaseOrder.forEach((_,i)=>{
+    const d=document.createElement('div');
+    d.style.cssText=`width:6px;height:6px;border-radius:50%;background:${i===showcaseIdx?'var(--amber)':'rgba(255,255,255,.15)'};transition:background .3s;cursor:pointer`;
+    d.onclick=()=>{showcaseIdx=i;runShowcase();};
+    wrap.appendChild(d);
+  });
+}
+
+function runShowcase(){
+  clearTimeout(showcaseTimer);
+  const key=showcaseOrder[showcaseIdx];
+  const lines=cmdData[key]||[];
+  document.getElementById('tBarTitle').textContent=key;
+  document.getElementById('tProgress').textContent=(showcaseIdx+1)+' / '+showcaseOrder.length;
+  buildNavDots();
+  renderT(lines,document.getElementById('tBody'));
+  // auto-advance after lines finish + 2.5s pause
+  const dur=(lines.length*110)+2800;
+  showcaseTimer=setTimeout(()=>{
+    showcaseIdx=(showcaseIdx+1)%showcaseOrder.length;
+    runShowcase();
+  },dur);
+}
+
+runShowcase();
+
+// ── COMMAND PLAYGROUND ──
+function showCmd(name){
+  document.querySelectorAll('.cmd-row').forEach(r=>r.classList.remove('active'));
+  document.querySelector(`[data-c="${name}"]`).classList.add('active');
+  document.getElementById('cmdTitle').textContent=`ridge ${name}`;
+  renderT(cmdData[`ridge ${name}`]||[],document.getElementById('cmdOut'));
+}
+showCmd('start');
+
+// ── SITE CATEGORIZER ──
+const siteDB={
+  'github.com':{cat:'deep',icon:'💻',conf:97,reason:'Code hosting platform — core to software development workflows.'},
+  'stackoverflow.com':{cat:'deep',icon:'💻',conf:91,reason:'Technical Q&A directly supporting coding and problem-solving.'},
+  'notion.so':{cat:'deep',icon:'📝',conf:88,reason:'Productivity and docs tool used for structured work output.'},
+  'figma.com':{cat:'deep',icon:'🎨',conf:92,reason:'Design tool for professional UI/UX work.'},
+  'linear.app':{cat:'deep',icon:'📋',conf:94,reason:'Engineering project management — deep work context.'},
+  'docs.google.com':{cat:'deep',icon:'📄',conf:85,reason:'Document creation — primarily a work output tool.'},
+  'vercel.com':{cat:'deep',icon:'⚡',conf:93,reason:'Deployment platform for web apps — technical deep work.'},
+  'reddit.com':{cat:'escape',icon:'📱',conf:89,reason:'Social platform with infinite scroll. Avg session: 23 minutes.'},
+  'twitter.com':{cat:'escape',icon:'🐦',conf:87,reason:'Social feed with strong engagement mechanics and scroll traps.'},
+  'youtube.com':{cat:'escape',icon:'📺',conf:82,reason:'Video platform. Autoplay drives sessions 5x longer than intended.'},
+  'netflix.com':{cat:'escape',icon:'🎬',conf:98,reason:'Streaming entertainment. Not a work context.'},
+  'instagram.com':{cat:'escape',icon:'📸',conf:95,reason:'Visual social platform optimized for engagement loops.'},
+  'tiktok.com':{cat:'escape',icon:'🎵',conf:99,reason:'Short-form video with the most engineered scroll-trap in the industry.'},
+  'slack.com':{cat:'shallow',icon:'💬',conf:83,reason:'Workplace messaging — necessary but reactive and interruptive.'},
+  'gmail.com':{cat:'shallow',icon:'📧',conf:81,reason:'Email — reactive communication that rarely requires deep focus.'},
+  'calendar.google.com':{cat:'shallow',icon:'📅',conf:86,reason:'Scheduling — administrative shallow work.'},
+  'zoom.us':{cat:'shallow',icon:'📹',conf:80,reason:'Video meetings — shallow unless highly structured.'},
+  'linkedin.com':{cat:'shallow',icon:'👔',conf:78,reason:'Professional network — borderline shallow/escape by session intent.'},
+};
+function doCat(){
+  const raw=document.getElementById('catIn').value.trim().toLowerCase().replace(/^https?:\/\//,'').replace(/^www\./,'').split('/')[0];
+  if(!raw)return;
+  const res=document.getElementById('catResult');
+  res.innerHTML=`<div class="cat-empty" style="color:var(--amber)">analyzing ${raw}...</div>`;
+  res.classList.remove('loaded');
+  setTimeout(()=>{
+    const d=siteDB[raw]||siteDB[raw+'.com'];
+    const confColor={deep:'var(--green)',shallow:'var(--yellow)',escape:'var(--red)',neutral:'var(--text-muted)'};
+    const tagLabel={deep:'🟢 DEEP WORK',shallow:'🟡 SHALLOW',escape:'🔴 ESCAPE',neutral:'⚪ NEUTRAL'};
+    if(d){
+      res.innerHTML=`<div style="width:100%"><div class="cat-card"><span class="cat-icon-big">${d.icon}</span><div><div class="cat-domain-name">${raw}</div><span class="cat-badge ${d.cat}">${tagLabel[d.cat]}</span></div><div style="text-align:right"><span class="cat-conf-big" style="color:${confColor[d.cat]}">${d.conf}%</span><span class="cat-conf-lbl">confidence</span></div></div><div class="cat-reasoning">"${d.reason}"</div></div>`;
+    } else {
+      const isDeep=['api','docs','dev','code','git','lab','app'].some(w=>raw.includes(w));
+      const isEsc=['game','stream','watch','porn','bet'].some(w=>raw.includes(w));
+      const cat=isEsc?'escape':isDeep?'deep':'neutral';
+      const conf=isEsc?91:isDeep?72:55;
+      res.innerHTML=`<div style="width:100%"><div class="cat-card"><span class="cat-icon-big">🌐</span><div><div class="cat-domain-name">${raw}</div><span class="cat-badge ${cat}">${tagLabel[cat]}</span></div><div style="text-align:right"><span class="cat-conf-big" style="color:${confColor[cat]}">${conf}%</span><span class="cat-conf-lbl">confidence</span></div></div><div class="cat-reasoning">"Unknown site. Ridge CLI learns your usage pattern over time and refines this category automatically based on session behavior."</div></div>`;
+    }
+    res.classList.add('loaded');
+  },500);
+}
+function qCat(s){document.getElementById('catIn').value=s;doCat();}
+document.getElementById('catIn').addEventListener('keydown',e=>{if(e.key==='Enter')doCat()});
+
+// ── COST CALC ──
+function updateCalc(){
+  const r=+document.getElementById('rS').value;
+  const d=+document.getElementById('dS').value;
+  const sw=+document.getElementById('swS').value;
+  const rec=+document.getElementById('recS').value;
+  document.getElementById('rV').textContent=r;
+  document.getElementById('dV').textContent=d;
+  document.getElementById('swV').textContent=sw;
+  document.getElementById('recV').textContent=rec;
+  const days=250;
+  const directDay=d*r;
+  const recDay=(sw*(rec/60))*r;
+  const totalDay=directDay+recDay;
+  const annual=totalDay*days;
+  const fmt=n=>n>=1000?'$'+Math.round(n/1000)+'k':'$'+Math.round(n);
+  document.getElementById('calcNum').textContent=fmt(annual);
+  document.getElementById('calcDirect').textContent=fmt(directDay*days);
+  document.getElementById('calcRec').textContent=fmt(recDay*days);
+  document.getElementById('calcDay').textContent=fmt(totalDay);
+  document.getElementById('calcWeek').textContent=fmt(totalDay*5);
+  document.getElementById('calcNum').style.color=annual>60000?'var(--red)':annual>30000?'var(--yellow)':'var(--amber)';
+}
+updateCalc();
+function shareCalc(){
+  const n=document.getElementById('calcNum').textContent;
+  navigator.clipboard.writeText(`My distraction costs me ${n}/year. Ridge CLI calculated it from my own data. getridge.io`);
+  const b=document.querySelector('.calc-share-btn');
+  b.textContent='✓ Copied!';
+  setTimeout(()=>b.textContent='⎘ Copy result to share',2200);
+}
+
+// ── SIMULATOR ──
+const dayPresets={deep:{dw:6,esc:0.5,cs:8},meetings:{dw:2,esc:1,cs:22},distracted:{dw:1.5,esc:3,cs:35},recovery:{dw:3.5,esc:1,cs:14}};
+function setDay(btn){
+  document.querySelectorAll('.day-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const p=dayPresets[btn.dataset.type];
+  document.getElementById('dwS').value=p.dw;
+  document.getElementById('escS').value=p.esc;
+  document.getElementById('csS').value=p.cs;
+  updateSim();
+}
+function updateSim(){
+  const dw=+document.getElementById('dwS').value;
+  const esc=+document.getElementById('escS').value;
+  const cs=+document.getElementById('csS').value;
+  document.getElementById('dwV').textContent=dw+'h';
+  document.getElementById('escV').textContent=esc+'h';
+  document.getElementById('csV').textContent=cs;
+  const total=8;
+  const sh=Math.max(0,total-dw-esc);
+  const score=Math.min(100,Math.max(0,Math.round((dw/total)*70+Math.max(0,(20-cs)/20)*20+Math.max(0,(2-esc)/2)*10)));
+  document.getElementById('simScore').textContent=score;
+  document.getElementById('simScore').style.color=score>=70?'var(--green)':score>=50?'var(--yellow)':'var(--red)';
+  const lbl=score>=85?'Exceptional focus ✦':score>=70?'Good focus day':score>=55?'Average day':score>=40?'Scattered day ⚠':'Very distracted ⚠';
+  document.getElementById('simScoreLbl').textContent=lbl;
+  document.getElementById('sbDeep').style.width=Math.round((dw/total)*100)+'%';
+  document.getElementById('sbShallow').style.width=Math.round((sh/total)*100)+'%';
+  document.getElementById('sbEscape').style.width=Math.round((esc/total)*100)+'%';
+  document.getElementById('svDeep').textContent=dw+'h';
+  document.getElementById('svShallow').textContent=sh.toFixed(1)+'h';
+  document.getElementById('svEscape').textContent=esc+'h';
+  const tl=document.getElementById('simTl');tl.innerHTML='';
+  ['9','10','11','12','1','2','3','4','5'].forEach((h,i)=>{
+    const b=document.createElement('div');b.className='sim-tl-block';
+    b.style.background=i<2?dw>4?'var(--green)':'var(--yellow)':i===3?'var(--yellow)':i>3&&esc>2?'var(--red)':dw>3?'var(--green)':'var(--yellow)';
+    tl.appendChild(b);
+  });
+  const ins=document.getElementById('simIns');
+  if(score>=80){ins.textContent='↑ Strong focus. Deep work blocks are protecting peak hours.';ins.style.background='rgba(62,207,142,.1)';ins.style.border='1px solid rgba(62,207,142,.2)';ins.style.color='var(--green)';}
+  else if(esc>2){ins.textContent='⚠ High escape time. Each visit likely runs longer than planned.';ins.style.background='rgba(241,96,96,.1)';ins.style.border='1px solid rgba(241,96,96,.2)';ins.style.color='var(--red)';}
+  else if(cs>25){ins.textContent='⚠ High context switches. Each one costs ~15 min to recover from.';ins.style.background='rgba(245,200,66,.1)';ins.style.border='1px solid rgba(245,200,66,.2)';ins.style.color='var(--yellow)';}
+  else{ins.textContent='→ Middle-tier day. Cutting escape by 30 min pushes you past 70.';ins.style.background='var(--amber-glow)';ins.style.border='1px solid rgba(245,166,35,.2)';ins.style.color='var(--amber)';}
+}
+updateSim();
+
+// ── ATTENTION TIMELINE ──
+const tlData=[1,1,1,1,1,1,2,2,1,1,1,1,3,3,2,2,1,1,1,2,3,3,3,2,1,1,2,2,0,0];
+const tlColors={0:'rgba(240,238,232,.12)',1:'#3ecf8e',2:'#f5c842',3:'#f16060'};
+const tlInsights=[[0,3,'Quiet start — email and calendar checks.'],[4,11,'🟢 Deep focus block. Your best work of the day.',true],[12,13,'Shallow drift — Slack and meetings.'],[14,15,'⚠ First escape to social media. 30 minutes.',false,true],[16,17,'Recovery window after distraction.'],[18,20,'🟢 Second deep work block. Strong afternoon.',true],[21,23,'⚠ Evening escape spiral — YouTube and Reddit.',false,true],[24,25,'🟢 Late push to close out.',true],[26,27,'Wind-down. Shallow messages.'],[28,29,'Idle — end of day.']];
+function buildTl(){
+  const track=document.getElementById('tlTrack');
+  track.innerHTML='';
+  const maxH=56;
+  tlData.forEach((type,i)=>{
+    const b=document.createElement('div');b.className='tl-block';
+    const h=type===0?8:type===1?maxH:type===2?34:20;
+    b.style.height=h+'px';b.style.background=tlColors[type];b.style.opacity='.85';
+    const time=`${8+Math.floor(i/2)}:${i%2===0?'00':'30'}`;
+    b.innerHTML=`<div class="tl-block-tip">${time}</div>`;
+    track.appendChild(b);
+  });
+  const lbl=document.getElementById('tlTimeLabels');lbl.innerHTML='';
+  ['8am','9','10','11','12pm','1','2','3','4','5','6','7','8','9','10'].forEach(t=>{const s=document.createElement('span');s.textContent=t;lbl.appendChild(s)});
+}
+buildTl();
+document.getElementById('tlScrubber').addEventListener('input',function(){
+  const idx=+this.value;
+  const ins=document.getElementById('tlInsight');
+  const m=tlInsights.find(([s,e])=>idx>=s&&idx<=e);
+  if(m){ins.textContent=m[2];ins.className='tl-insight'+(m[3]?' good':m[4]?' warn':'');}
+  document.getElementById('tlTrack').querySelectorAll('.tl-block').forEach((b,i)=>{b.style.opacity=i<=idx?'.9':'.2'});
+});
+
+// ── FAQ ──
+function toggleFaq(item){
+  const wasOpen=item.classList.contains('open');
+  document.querySelectorAll('.faq-item').forEach(f=>f.classList.remove('open'));
+  if(!wasOpen)item.classList.add('open');
+}
+
+
+// ── THEME TOGGLE ──
+let isDark = true;
+function toggleTheme(){
+  isDark = !isDark;
+  document.body.classList.toggle('light', !isDark);
+  document.getElementById('themeIcon').textContent = isDark ? '☀' : '🌙';
+}
+
+// ── I18N TRANSLATIONS ──
+const translations = {
+  en: {
+    nav_cta: 'Get Ridge CLI →',
+    hero_badge: 'v1.0 now available · open source · free forever',
+    hero_h1_line1: 'Know where your',
+    hero_h1_em: 'attention',
+    hero_h1_grad: 'actually goes',
+    hero_sub: 'Ridge CLI runs silently in your terminal, reads your browser history, and builds a precise picture of your real focus habits. No extension needed. No cloud. No subscription.',
+    btn_install: '↓ Install free',
+    btn_github: '☆ Star on GitHub',
+    install_label: 'INSTALL',
+    sp1: 'All platforms',
+    sp2: 'Cloud dependencies',
+    sp3: 'Extensions needed',
+    sp4: 'Open source forever',
+    how_chip: 'How it works',
+    how_h: 'Three steps.',
+    how_hem: 'Zero friction.',
+    how_sub: 'Ridge CLI works with data already on your machine. No setup wizards, no accounts required.',
+    how1_title: 'Install & Start',
+    how1_desc: 'One pip install. Ridge CLI creates a hidden folder and starts a daemon that polls every 30 seconds. Zero configuration required.',
+    how2_title: 'Ridge CLI Watches',
+    how2_desc: 'Reads browser history directly from disk. Reads active app via psutil. Auto-categorizes every domain. Everything stored locally in SQLite.',
+    how3_title: 'See The Truth',
+    how3_desc: 'Pull a terminal report anytime. Spin up a local dashboard. Get ML-powered insights on your patterns — all from your data.',
+    sim_chip: 'Focus Simulator',
+    sim_h: 'What does your day',
+    sim_hem: 'actually score?',
+    sim_sub: 'Pick a day type. Adjust the sliders. Watch Ridge CLI calculate your real focus score live.',
+    cat_chip: 'Live Categorizer',
+    cat_h: 'How does Ridge CLI',
+    cat_hem: 'see your sites?',
+    cat_sub: 'Type any website URL and see exactly how Ridge CLI would categorize it — deep work, shallow, or escape.',
+    calc_chip: 'Cost Calculator',
+    calc_h: 'Your distraction has a',
+    calc_hem: 'real dollar cost.',
+    calc_sub: 'Adjust your hourly rate and distraction habits. See what unfocused time costs you every year.',
+    cmd_chip: 'Commands',
+    cmd_h: 'Click any command.',
+    cmd_hem: 'See it run.',
+    test_chip: 'What people say',
+    test_h: 'Loved by developers',
+    test_hem: 'who mean it.',
+    faq_chip: 'FAQ',
+    faq_h: 'Common',
+    faq_hem: 'questions.',
+    cta_h: 'Start seeing the truth',
+    cta_hem: 'about your attention today.',
+    cta_sub: 'No account. No cloud. Just your data, your machine, and the truth about where your focus actually goes.',
+    cta_btn: 'Install Ridge CLI free →',
+    cta_gh: 'View source on GitHub',
+    roadmap_chip: 'Roadmap',
+    roadmap_h: 'Built in the open.',
+    roadmap_hem: 'Shipped for real.',
+    roadmap_sub: 'CLI first. Extension and web app next. Same data, more surfaces.',
+    tl_chip: 'Attention Timeline',
+    tl_h: 'See your day',
+    tl_hem: 'as it really was.',
+    tl_sub: 'Drag the scrubber to explore a typical workday. Ridge CLI reveals exactly when focus collapsed — and why.',
+    feat_chip: 'Features',
+    feat_h: 'Built for people who care about',
+    feat_hem: 'their time.',
+  },
+  es: {
+    nav_cta: 'Obtener Ridge CLI →',
+    hero_badge: 'v1.0 disponible · código abierto · gratis para siempre',
+    hero_h1_line1: 'Sabe a dónde va tu',
+    hero_h1_em: 'atención',
+    hero_h1_grad: 'realmente',
+    hero_sub: 'Ridge CLI corre silenciosamente en tu terminal, lee tu historial del navegador y crea una imagen precisa de tus hábitos de enfoque reales. Sin extensiones. Sin nube. Sin suscripción.',
+    btn_install: '↓ Instalar gratis',
+    btn_github: '☆ Star en GitHub',
+    install_label: 'INSTALAR',
+    sp1: 'Todas las plataformas',
+    sp2: 'Dependencias en la nube',
+    sp3: 'Extensiones necesarias',
+    sp4: 'Código abierto para siempre',
+    how_chip: 'Cómo funciona',
+    how_h: 'Tres pasos.',
+    how_hem: 'Cero fricción.',
+    how_sub: 'Ridge CLI trabaja con datos que ya están en tu máquina. Sin asistentes de configuración, sin cuentas.',
+    how1_title: 'Instalar e Iniciar',
+    how1_desc: 'Una instalación pip. Ridge CLI crea una carpeta oculta e inicia un daemon que sondea cada 30 segundos. Cero configuración requerida.',
+    how2_title: 'Ridge CLI Observa',
+    how2_desc: 'Lee el historial del navegador directamente desde el disco. Lee la aplicación activa vía psutil. Categoriza automáticamente cada dominio.',
+    how3_title: 'Ver La Verdad',
+    how3_desc: 'Obtén un reporte de terminal en cualquier momento. Lanza un panel local. Obtén perspectivas con ML sobre tus patrones.',
+    sim_chip: 'Simulador de Enfoque',
+    sim_h: '¿Qué puntuación tiene tu día',
+    sim_hem: 'realmente?',
+    sim_sub: 'Elige un tipo de día. Ajusta los controles. Observa cómo Ridge CLI calcula tu puntuación de enfoque real en vivo.',
+    cat_chip: 'Categorizador en Vivo',
+    cat_h: '¿Cómo ve Ridge CLI',
+    cat_hem: 'tus sitios?',
+    cat_sub: 'Escribe cualquier URL y observa exactamente cómo Ridge CLI la categorizaría — trabajo profundo, superficial o escape.',
+    calc_chip: 'Calculadora de Costos',
+    calc_h: 'Tu distracción tiene un',
+    calc_hem: 'costo real en dinero.',
+    calc_sub: 'Ajusta tu tarifa por hora y hábitos de distracción. Ve cuánto te cuesta el tiempo sin enfoque cada año.',
+    cmd_chip: 'Comandos',
+    cmd_h: 'Haz clic en cualquier comando.',
+    cmd_hem: 'Míralo ejecutarse.',
+    test_chip: 'Qué dice la gente',
+    test_h: 'Amado por desarrolladores',
+    test_hem: 'que lo dicen en serio.',
+    faq_chip: 'Preguntas',
+    faq_h: 'Preguntas',
+    faq_hem: 'frecuentes.',
+    cta_h: 'Comienza a ver la verdad',
+    cta_hem: 'sobre tu atención hoy.',
+    cta_sub: 'Sin cuenta. Sin nube. Solo tus datos, tu máquina y la verdad sobre dónde va realmente tu enfoque.',
+    cta_btn: 'Instalar Ridge CLI gratis →',
+    cta_gh: 'Ver código en GitHub',
+    roadmap_chip: 'Hoja de Ruta',
+    roadmap_h: 'Construido en abierto.',
+    roadmap_hem: 'Lanzado de verdad.',
+    roadmap_sub: 'CLI primero. Extensión y aplicación web después. Los mismos datos, más superficies.',
+    tl_chip: 'Línea de Tiempo',
+    tl_h: 'Ve tu día',
+    tl_hem: 'como realmente fue.',
+    tl_sub: 'Arrastra el control para explorar un día de trabajo típico. Ridge CLI revela exactamente cuándo colapsó el enfoque.',
+    feat_chip: 'Características',
+    feat_h: 'Construido para personas que cuidan',
+    feat_hem: 'su tiempo.',
+  }
+};
+
+// Map of data-i18n keys to DOM elements
+const i18nMap = {
+  nav_cta: () => document.querySelectorAll('[data-i18n="nav_cta"]'),
+  hero_badge: () => {
+    const b = document.querySelector('.hero-badge');
+    if(b) { const dot = b.querySelector('.hero-badge-dot'); b.innerHTML=''; if(dot)b.appendChild(dot); b.insertAdjacentText('beforeend',' '); b.insertAdjacentText('beforeend', translations[currentLang].hero_badge); }
+  },
+  hero_sub: () => document.querySelectorAll('.hero-sub'),
+  btn_install: () => document.querySelector('.btn-main'),
+};
+
+let currentLang = 'en';
+
+function setLang(lang, btn) {
+  currentLang = lang;
+  document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const t = translations[lang];
+
+  // Hero h1
+  const h1 = document.querySelector('.hero h1');
+  if(h1) h1.innerHTML = `${t.hero_h1_line1} <em>${t.hero_h1_em}</em><br><span class="grad">${t.hero_h1_grad}</span>`;
+
+  // Hero sub
+  document.querySelectorAll('.hero-sub').forEach(el => el.textContent = t.hero_sub);
+
+  // Hero badge
+  const badge = document.querySelector('.hero-badge');
+  if(badge){const dot=badge.querySelector('.hero-badge-dot');badge.innerHTML='';if(dot)badge.appendChild(dot);badge.appendChild(document.createTextNode(' '+t.hero_badge));}
+
+  // Buttons
+  const btnMain = document.querySelector('.btn-main'); if(btnMain) btnMain.textContent = t.btn_install;
+  const btnOut = document.querySelector('.btn-outline'); if(btnOut) btnOut.textContent = t.btn_github;
+  const navCta = document.querySelector('.nav-cta'); if(navCta) navCta.textContent = t.nav_cta;
+  document.getElementById('heroInstallLabel') && (document.getElementById('heroInstallLabel').textContent = t.install_label);
+
+  // Social proof
+  const spItems = document.querySelectorAll('.sp-item');
+  const spKeys = ['sp1','sp2','sp3','sp4'];
+  spItems.forEach((el,i) => { const num = el.querySelector('.sp-num'); if(num && spKeys[i]) { const txt = el.childNodes; el.childNodes.forEach(n => { if(n.nodeType===3) n.textContent = ' '+t[spKeys[i]]; }); }});
+
+  // Section chips, headings, subs - map by id
+  const sectionMap = [
+    ['how','how_chip','how_h','how_hem','how_sub'],
+    ['simulate','sim_chip','sim_h','sim_hem','sim_sub'],
+    ['categorize','cat_chip','cat_h','cat_hem','cat_sub'],
+    ['calculator','calc_chip','calc_h','calc_hem','calc_sub'],
+    ['commands','cmd_chip','cmd_h','cmd_hem',null],
+    ['timeline','tl_chip','tl_h','tl_hem','tl_sub'],
+    ['roadmap','roadmap_chip','roadmap_h','roadmap_hem','roadmap_sub'],
+    ['faq','faq_chip','faq_h','faq_hem',null],
+  ];
+  sectionMap.forEach(([id,chip,h,hem,sub]) => {
+    const sec = document.getElementById(id); if(!sec) return;
+    const chipEl = sec.querySelector('.section-chip'); if(chipEl && t[chip]) chipEl.textContent = t[chip];
+    const hEl = sec.querySelector('.section-h');
+    if(hEl && t[h]) hEl.innerHTML = `${t[h]} <em>${t[hem]}</em>`;
+    if(sub) { const sEl = sec.querySelector('.section-sub'); if(sEl && t[sub]) sEl.textContent = t[sub]; }
+  });
+
+  // Features section (no id, find by chip)
+  document.querySelectorAll('.section-chip').forEach(chip => {
+    if(chip.textContent.trim() === translations.en.feat_chip || chip.textContent.trim() === translations.es.feat_chip || chip.textContent.trim() === translations.ko.feat_chip) {
+      chip.textContent = t.feat_chip;
+      const hEl = chip.closest('.section-inner')?.querySelector('.section-h');
+      if(hEl) hEl.innerHTML = `${t.feat_h} <em>${t.feat_hem}</em>`;
+    }
+  });
+
+  // Testimonials chip
+  document.querySelectorAll('.section-chip').forEach(chip => {
+    if(['What people say','Qué dice la gente','사람들의 말'].includes(chip.textContent.trim())){
+      chip.textContent = t.test_chip;
+      const hEl = chip.closest('.section-inner')?.querySelector('.section-h');
+      if(hEl) hEl.innerHTML = `${t.test_h} <em>${t.test_hem}</em>`;
+    }
+  });
+
+  // CTA section
+  const ctaSec = document.querySelector('.cta-section');
+  if(ctaSec){
+    const cH = ctaSec.querySelector('.section-h'); if(cH) cH.innerHTML = `${t.cta_h} <em>${t.cta_hem}</em>`;
+    const cS = ctaSec.querySelector('.section-sub'); if(cS) cS.textContent = t.cta_sub;
+    const cBtn = ctaSec.querySelector('.btn-main'); if(cBtn) cBtn.textContent = t.cta_btn;
+    const cGh = ctaSec.querySelector('.btn-outline'); if(cGh) cGh.textContent = t.cta_gh;
+  }
+
+  // How cards
+  const howCards = document.querySelectorAll('.how-card');
+  if(howCards.length >= 3){
+    const titles = [t.how1_title, t.how2_title, t.how3_title];
+    const descs  = [t.how1_desc,  t.how2_desc,  t.how3_desc];
+    howCards.forEach((card,i)=>{
+      const tEl=card.querySelector('.how-title'); if(tEl) tEl.textContent=titles[i];
+      const dEl=card.querySelector('.how-desc');  if(dEl) dEl.textContent=descs[i];
+    });
+  }
+
+  // html lang attr
+  document.documentElement.lang = lang;
+}
+
+
+// ── WORKFLOW TIMELINE ──
+const wfData = [
+  {
+    time:'8:00 AM', type:'idle', score:0, barW:5,
+    title:'Starting the day',
+    subtitle:'Ridge CLI daemon activates. Browser history baseline captured.',
+    logs:[
+      {ts:'08:01',msg:'Ridge CLI daemon started',cls:'good'},
+      {ts:'08:01',msg:'Scanning ~/.ridge/data.db',cls:''},
+      {ts:'08:02',msg:'Browser history loaded: 0 new entries',cls:''},
+      {ts:'08:03',msg:'Active app: Terminal',cls:'hi'},
+    ],
+    note:`Ridge CLI is now watching silently. You do nothing.`
+  },
+  {
+    time:'9:00 AM', type:'deep', score:92, barW:92,
+    title:'Peak deep work block',
+    subtitle:'92/100 — Your best focus window. Ridge CLI detects zero context switches.',
+    logs:[
+      {ts:'09:00',msg:'Session: deep work started',cls:'good'},
+      {ts:'09:08',msg:'github.com → DEEP WORK',cls:'good'},
+      {ts:'09:24',msg:'vscode active — 24 min continuous',cls:'good'},
+      {ts:'09:45',msg:'Context switches: 0 ✓',cls:'good'},
+      {ts:'09:58',msg:'Focus score: 92/100',cls:'hi'},
+    ],
+    note:`Protect this window. Ridge CLI will remind you tomorrow.`
+  },
+  {
+    time:'10:00 AM', type:'deep', score:88, barW:88,
+    title:'Sustained deep work',
+    subtitle:'Still in flow. Stack Overflow + GitHub. Ridge CLI scores it 88.',
+    logs:[
+      {ts:'10:02',msg:'stackoverflow.com → DEEP WORK',cls:'good'},
+      {ts:'10:18',msg:'docs.google.com → DEEP WORK',cls:'good'},
+      {ts:'10:31',msg:'Context switches: 2',cls:''},
+      {ts:'10:55',msg:'Deep work streak: 2h 10m',cls:'hi'},
+    ],
+    note:`You're in a flow state. Ridge CLI is logging every minute.`
+  },
+  {
+    time:'11:00 AM', type:'shallow', score:65, barW:65,
+    title:'Shallow drift — meetings',
+    subtitle:'Slack, email, calendar. Necessary but shallow. Score drops to 65.',
+    logs:[
+      {ts:'11:02',msg:'slack.com → SHALLOW',cls:''},
+      {ts:'11:09',msg:'gmail.com → SHALLOW',cls:''},
+      {ts:'11:22',msg:'Context switches: 6',cls:'warn'},
+      {ts:'11:44',msg:'zoom.us → SHALLOW',cls:''},
+      {ts:'11:58',msg:'Focus score: 65/100',cls:''},
+    ],
+    note:`Shallow work detected. Ridge CLI tracks this separately from escape.`
+  },
+  {
+    time:'12:00 PM', type:'idle', score:20, barW:20,
+    title:'Lunch break',
+    subtitle:'Ridge CLI detects idle. No apps tracked. Session paused automatically.',
+    logs:[
+      {ts:'12:01',msg:'Idle detected — no active app',cls:''},
+      {ts:'12:01',msg:'Session paused automatically',cls:'hi'},
+      {ts:'12:32',msg:'Still idle — lunch assumed',cls:''},
+      {ts:'12:58',msg:'Awaiting next session...',cls:''},
+    ],
+    note:`Ridge CLI knows the difference between idle and distracted.`
+  },
+  {
+    time:'1:00 PM', type:'escape', score:28, barW:28,
+    title:'Post-lunch escape spiral',
+    subtitle:'YouTube at 1:04pm. 34 minutes. This is your weekly pattern.',
+    logs:[
+      {ts:'13:04',msg:'youtube.com → ESCAPE ⚠',cls:'warn'},
+      {ts:'13:11',msg:'Still on YouTube — 7 min',cls:'warn'},
+      {ts:'13:28',msg:'Still on YouTube — 24 min',cls:'warn'},
+      {ts:'13:38',msg:'twitter.com → ESCAPE ⚠',cls:'warn'},
+      {ts:'13:58',msg:'Focus score: 28/100',cls:'warn'},
+    ],
+    note:`⚠ Pattern detected: escape every Mon/Wed/Fri post-lunch. Ridge CLI will pre-warn tomorrow.`
+  },
+  {
+    time:'2:00 PM', type:'deep', score:74, barW:74,
+    title:'Recovery and refocus',
+    subtitle:'Back to GitHub. 18 min to refocus — faster than your average.',
+    logs:[
+      {ts:'14:06',msg:'github.com → DEEP WORK',cls:'good'},
+      {ts:'14:18',msg:'Recovery time: 18 min (avg 23)',cls:'hi'},
+      {ts:'14:35',msg:'figma.com → DEEP WORK',cls:'good'},
+      {ts:'14:52',msg:'Context switches: 4',cls:''},
+      {ts:'14:58',msg:'Focus score: 74/100',cls:'good'},
+    ],
+    note:`Your recovery is improving. Down from 28 min last week.`
+  },
+  {
+    time:'3:00 PM', type:'deep', score:81, barW:81,
+    title:'Afternoon deep work push',
+    subtitle:'Solid block. linear.app + GitHub. Score climbs back to 81.',
+    logs:[
+      {ts:'15:01',msg:'linear.app → DEEP WORK',cls:'good'},
+      {ts:'15:22',msg:'github.com → DEEP WORK',cls:'good'},
+      {ts:'15:40',msg:'Deep work streak: 52 min',cls:'good'},
+      {ts:'15:55',msg:'Context switches: 3',cls:'good'},
+      {ts:'15:59',msg:'Focus score: 81/100',cls:'hi'},
+    ],
+    note:`This is your second-best window of the day. Ridge CLI noted it.`
+  },
+  {
+    time:'4:00 PM', type:'shallow', score:58, barW:58,
+    title:'End-of-day admin',
+    subtitle:'Slack catchup, PRs, calendar for tomorrow. Shallow but intentional.',
+    logs:[
+      {ts:'16:02',msg:'slack.com → SHALLOW',cls:''},
+      {ts:'16:18',msg:'github.com/pulls → SHALLOW',cls:''},
+      {ts:'16:35',msg:'calendar.google.com → SHALLOW',cls:''},
+      {ts:'16:52',msg:'Context switches: 8',cls:''},
+      {ts:'16:59',msg:'Focus score: 58/100',cls:''},
+    ],
+    note:`Intentional shallow work. Ridge CLI distinguishes it from distraction.`
+  },
+  {
+    time:'5:00 PM', type:'idle', score:0, barW:5,
+    title:'Shutdown ritual',
+    subtitle:'Ridge CLI closes the session. Daily report generated. Data saved locally.',
+    logs:[
+      {ts:'17:01',msg:'Session ended — ridge stop',cls:'hi'},
+      {ts:'17:01',msg:'Daily report generated',cls:'good'},
+      {ts:'17:01',msg:'Today score: 71/100',cls:'good'},
+      {ts:'17:01',msg:'Data saved → ~/.ridge/data.db',cls:''},
+    ],
+    note:"Run `ridge report` to see your full day breakdown."
+  },
+];
+
+let activeWfIdx = 1; // Start on 9am deep work
+
+function buildWfHours(){
+  const wrap = document.getElementById('wfHours');
+  if(!wrap) return;
+  wrap.innerHTML = '';
+  wfData.forEach((h,i)=>{
+    const row = document.createElement('div');
+    row.className = 'wf-hour' + (i===activeWfIdx?' active':'');
+    row.onclick = ()=>{ activeWfIdx=i; buildWfHours(); renderWfPanel(); };
+    const scoreColor = h.type==='deep'?'var(--green)':h.type==='escape'?'var(--red)':h.type==='shallow'?'var(--yellow)':'rgba(255,255,255,.15)';
+    row.innerHTML = `
+      <span class="wf-hour-time">${h.time}</span>
+      <div class="wf-hour-bar-wrap"><div class="wf-hour-bar" style="width:${h.barW}%;background:${scoreColor}"></div></div>
+      <span class="wf-hour-tag ${h.type}">${h.type.toUpperCase()}</span>
+      <span class="wf-hour-score">${h.score||'—'}</span>
+    `;
+    wrap.appendChild(row);
+  });
+}
+
+function renderWfPanel(){
+  const d = wfData[activeWfIdx];
+  const panel = document.getElementById('wfPanelInner');
+  if(!panel) return;
+  const scoreColor = d.type==='deep'?'var(--green)':d.type==='escape'?'var(--red)':d.type==='shallow'?'var(--yellow)':'var(--text-dim)';
+  panel.innerHTML = `
+    <div class="wf-panel-time">${d.time} · ${d.type.toUpperCase()}</div>
+    <div class="wf-panel-title">${d.title}</div>
+    <div class="wf-panel-subtitle">${d.subtitle}</div>
+    <div class="wf-panel-score-row">
+      <div class="wf-panel-score-num" style="color:${scoreColor}">${d.score||'—'}</div>
+      <div class="wf-panel-score-lbl">Focus<br>Score</div>
+    </div>
+    <div class="wf-panel-log" id="wfLog"></div>
+    <div class="wf-panel-ridge-note">ridge: ${d.note}</div>
+  `;
+  // Animate log lines
+  const logWrap = document.getElementById('wfLog');
+  d.logs.forEach((l,i)=>{
+    setTimeout(()=>{
+      const el = document.createElement('div');
+      el.className = 'wf-log-line';
+      el.innerHTML = `<span class="wf-log-ts">${l.ts}</span><span class="wf-log-msg ${l.cls}">${l.msg}</span>`;
+      logWrap.appendChild(el);
+      requestAnimationFrame(()=>el.classList.add('v'));
+    }, i*120);
+  });
+}
+
+// Animate counters on scroll
+function animateCounter(el, target, isTime=false, isMoney=false){
+  let cur=0;
+  const step=()=>{
+    cur += Math.ceil((target-cur)/8) || 1;
+    if(isTime){
+      const h=Math.floor(cur/60), m=cur%60;
+      el.textContent = h+'h '+(m<10?'0':'')+m+'m';
+    } else if(isMoney){
+      el.textContent = '$'+cur.toLocaleString();
+    } else {
+      el.textContent = cur;
+    }
+    if(cur<target) requestAnimationFrame(step);
+    else el.textContent = isTime?(Math.floor(target/60)+'h '+(target%60<10?'0':'')+(target%60)+'m'):isMoney?('$'+target.toLocaleString()):target;
+  };
+  step();
+}
+
+const wfCounterObs = new IntersectionObserver(entries=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      animateCounter(document.getElementById('wcFocus'), 74);
+      animateCounter(document.getElementById('wcSessions'), 8);
+      animateCounter(document.getElementById('wcDeep'), 262, true); // 4h 22m
+      animateCounter(document.getElementById('wcSaved'), 193, false, true);
+      wfCounterObs.disconnect();
+    }
+  });
+},{threshold:0.3});
+
+const wfCounters = document.getElementById('wfCounters');
+if(wfCounters) wfCounterObs.observe(wfCounters);
+
+// Init
+buildWfHours();
+renderWfPanel();
+
+</script>
+</body>
+</html>
