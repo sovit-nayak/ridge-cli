@@ -6,7 +6,18 @@ from ridge.tracker import get_active_app
 
 POLL_INTERVAL = 30  # seconds
 DAEMON_PID_FILE = RIDGE_DIR / "daemon.pid"
+LOG_FILE = RIDGE_DIR / "daemon.log"
 _stop_event = threading.Event()
+
+
+def _log(msg: str):
+    """Write to daemon log file for debugging."""
+    try:
+        RIDGE_DIR.mkdir(exist_ok=True)
+        with open(LOG_FILE, "a") as f:
+            f.write(f"[{time.strftime('%H:%M:%S')}] {msg}\n")
+    except Exception:
+        pass
 
 
 def _poll(session_id: int, last_poll_ts: list):
@@ -21,6 +32,7 @@ def _poll(session_id: int, last_poll_ts: list):
     last_poll_ts[0] = time.time()
 
     if urls:
+        _log(f"Found {len(urls)} URLs, logging to session {session_id}")
         for entry in urls:
             log_event(
                 session_id=session_id,
@@ -31,7 +43,7 @@ def _poll(session_id: int, last_poll_ts: list):
                 category=entry["category"],
             )
     else:
-        # Log app activity even with no new URLs
+        _log(f"No new URLs, logging app event: {app}")
         log_event(
             session_id=session_id,
             event_type="app",
@@ -43,26 +55,30 @@ def run_daemon(session_id: int):
     """Main daemon loop — runs until stop file appears or session ends."""
     RIDGE_DIR.mkdir(exist_ok=True)
     DAEMON_PID_FILE.write_text(str(session_id))
+    _log(f"Daemon started for session {session_id}")
 
     stop_file = RIDGE_DIR / "stop"
 
-    # Look back 5 minutes from session start to catch recent browsing
+    # Look back 5 minutes from session start
     last_poll_ts = [time.time() - 300]
 
     while not _stop_event.is_set():
         if stop_file.exists():
             stop_file.unlink(missing_ok=True)
+            _log("Stop file found, exiting")
             break
         if not get_active_session_id():
+            _log("No active session, exiting")
             break
         try:
             _poll(session_id, last_poll_ts)
-        except Exception:
-            pass  # Never crash the daemon
+        except Exception as e:
+            _log(f"Poll error: {e}")  # Log instead of silently swallow
         _stop_event.wait(timeout=POLL_INTERVAL)
 
     if DAEMON_PID_FILE.exists():
         DAEMON_PID_FILE.unlink(missing_ok=True)
+    _log("Daemon stopped")
 
 
 def start_daemon_process(session_id: int):

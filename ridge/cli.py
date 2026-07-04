@@ -47,7 +47,12 @@ def start(
     if is_daemon_running():
         console.print("[yellow]A session is already running.[/yellow] Use [bold]ridge stop[/bold] first.")
         raise typer.Exit(1)
+    stop_file = RIDGE_DIR / "stop"
+    if stop_file.exists():
+        stop_file.unlink()
 
+    task_name = task or ""
+    session_id = start_session(task_name)
     task_name = task or ""
     session_id = start_session(task_name)
 
@@ -150,6 +155,16 @@ def sites(
         events = get_today_events()
         print_sites(list(events), period="Today")
 
+@app.command()
+def dashboard():
+    """Open the local Streamlit dashboard."""
+    import subprocess
+    import sys
+    dashboard_path = Path(__file__).parent / "dashboard.py"
+    console.print("\n  [bold green]🚀 Launching Ridge CLI Dashboard...[/bold green]")
+    console.print("  [dim]Opening at http://localhost:8501[/dim]")
+    console.print("  [dim]Press Ctrl+C to stop[/dim]\n")
+    subprocess.run([sys.executable, "-m", "streamlit", "run", str(dashboard_path)])
 
 @app.command()
 def version():
