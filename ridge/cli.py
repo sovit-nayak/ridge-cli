@@ -155,6 +155,152 @@ def sites(
         events = get_today_events()
         print_sites(list(events), period="Today")
 
+
+# ── ADD THESE COMMANDS TO ridge/cli.py ──────────────────────
+# Paste each command into cli.py after the existing `sites` command
+
+@app.command()
+def insights():
+    """Analyze your focus patterns using ML."""
+    from ridge.ml.patterns import analyze_patterns
+
+    console.print("\n  [bold]Running pattern analysis...[/bold]\n")
+    result = analyze_patterns(days=60)
+
+    if "error" in result:
+        if result["error"] == "insufficient_data":
+            console.print(f"  [yellow]Not enough data yet.[/yellow]")
+            console.print(f"  [dim]Need {result['min_days']} days minimum. Keep using Ridge and check back.[/dim]\n")
+        else:
+            console.print(f"  [red]Error:[/red] {result.get('message', result['error'])}\n")
+        return
+
+    s = result["summary"]
+    console.print(f"  [dim]Analyzed {s['days_analyzed']} days · {s['total_events']} events · avg score {s['avg_score']}/100[/dim]\n")
+    console.rule("[bold]Patterns Detected[/bold]", style="dim")
+    console.print()
+
+    if not result["patterns"]:
+        console.print("  [dim]No strong patterns detected yet. Check back after 2+ weeks of data.[/dim]\n")
+        return
+
+    severity_colors = {"high": "red", "medium": "yellow", "positive": "green"}
+
+    for i, p in enumerate(result["patterns"], 1):
+        color = severity_colors.get(p.get("severity", "medium"), "yellow")
+        console.print(f"  [{color}]Pattern {i}[/{color}]  [bold]{p['title']}[/bold]")
+        console.print(f"  [dim]{p['detail']}[/dim]")
+        console.print(f"  [bold]Confidence:[/bold] {p['confidence']}%")
+        if "recommendation" in p:
+            console.print(f"  [green]→ {p['recommendation']}[/green]")
+        console.print()
+
+    console.rule(style="dim")
+    console.print()
+
+
+@app.command()
+def forecast():
+    """Predict your focus scores for the next 7 days."""
+    from ridge.ml.forecaster import forecast_scores
+
+    console.print("\n  [bold]Running forecast model...[/bold]\n")
+    result = forecast_scores(periods=7)
+
+    if "error" in result:
+        if result["error"] == "insufficient_data":
+            console.print(f"  [yellow]Not enough data yet.[/yellow]")
+            console.print(f"  [dim]Have {result['days_available']} days, need {result['days_needed']}.[/dim]\n")
+        elif result["error"] == "prophet_not_installed":
+            console.print(f"  [yellow]Prophet not installed.[/yellow]")
+            console.print(f"  [dim]Run: pip install prophet[/dim]\n")
+        else:
+            console.print(f"  [red]Error:[/red] {result.get('message', result['error'])}\n")
+        return
+
+    console.print(f"  [dim]Based on {result['days_of_data']} days of data · historical avg {result['avg_historical']}/100[/dim]")
+    if result.get("accuracy"):
+        console.print(f"  [dim]Model accuracy: {result['accuracy']}% on last 7 days[/dim]")
+    console.print(f"  [dim]Trend: {result['trend']}[/dim]\n")
+    console.rule("[bold]Next 7 Days Forecast[/bold]", style="dim")
+    console.print()
+
+    for p in result["predictions"]:
+        score = p["score"]
+        bar_filled = round(score / 5)
+        color = "green" if score >= 70 else "yellow" if score >= 50 else "red"
+        bar = f"[{color}]{'█' * bar_filled}[/{color}][dim]{'░' * (20 - bar_filled)}[/dim]"
+        warning = "  [yellow]⚠[/yellow]" if p["warning"] else ""
+        console.print(f"  [bold]{p['day']} {p['date']}[/bold]  {bar}  [{color}]{score}[/{color}]  [dim]{p['label']}[/dim]{warning}")
+
+    console.print()
+    console.rule(style="dim")
+    console.print()
+
+
+@app.command()
+def anomaly():
+    """Detect unusual days in your focus history."""
+    from ridge.ml.anomaly import detect_anomalies
+
+    console.print("\n  [bold]Running anomaly detection...[/bold]\n")
+    result = detect_anomalies()
+
+    if "error" in result:
+        if result["error"] == "insufficient_data":
+            console.print(f"  [yellow]Not enough data yet.[/yellow]")
+            console.print(f"  [dim]Have {result['days_available']} days, need {result['days_needed']}.[/dim]\n")
+        else:
+            console.print(f"  [red]Error:[/red] {result.get('message', result['error'])}\n")
+        return
+
+    console.print(f"  [dim]Analyzed {result['days_analyzed']} days · avg score {result['avg_score']}/100[/dim]")
+    console.print(f"  [dim]Found {result['anomaly_count']} anomalies ({result['positive_count']} positive, {result['negative_count']} negative)[/dim]\n")
+    console.rule("[bold]Anomalies Detected[/bold]", style="dim")
+    console.print()
+
+    if not result["anomalies"]:
+        console.print("  [green]No anomalies detected.[/green] Your focus is remarkably consistent.\n")
+        return
+
+    for a in result["anomalies"]:
+        color = "green" if a["type"] == "positive" else "red" if a["type"] == "negative" else "yellow"
+        icon = "★" if a["type"] == "positive" else "⚠" if a["type"] == "negative" else "?"
+        console.print(f"  [{color}]{icon}[/{color}]  [bold]{a['date']}[/bold]  [{color}]{a['title']}[/{color}]")
+        console.print(f"  [dim]{a['detail']}[/dim]")
+        console.print()
+
+    console.rule(style="dim")
+    console.print()
+
+
+@app.command()
+def coach():
+    """Generate an AI weekly coaching letter based on your data."""
+    from ridge.ml.coach import generate_coaching_letter
+
+    console.print("\n  [bold]Generating coaching letter...[/bold]\n")
+    result = generate_coaching_letter(days=7)
+
+    if "error" in result:
+        if result["error"] == "no_api_key":
+            console.print(f"  [yellow]Anthropic API key required for AI coaching.[/yellow]\n")
+            console.print(f"  [dim]{result['message']}[/dim]\n")
+        elif result["error"] == "insufficient_data":
+            console.print(f"  [yellow]{result['message']}[/yellow]\n")
+        else:
+            console.print(f"  [red]Error:[/red] {result.get('message', result['error'])}\n")
+        return
+
+    console.print(f"  [dim]Week avg: {result['week_avg']}/100 · {result['days_analyzed']} days analyzed[/dim]\n")
+    console.rule("[bold]Weekly Coaching Letter[/bold]", style="dim")
+    console.print()
+    console.print(f"  {result['letter']}")
+    console.print()
+    console.rule(style="dim")
+    console.print()
+
+
 @app.command()
 def dashboard():
     """Open the local Streamlit dashboard."""
