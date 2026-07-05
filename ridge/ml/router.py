@@ -46,7 +46,12 @@ def _model_is_pulled(model_name: str) -> bool:
 def _classify_with_ollama(event: dict) -> Optional[dict]:
     """Classify event using local Ollama model."""
     try:
-        from ridge.ml.ollama import classify_event
+        from ridge.ml.ollama import classify_event, _is_ollama_running, _model_is_available
+        model = cfg.get("ollama_model") or "llama3.2:3b"
+        if not _is_ollama_running():
+            return None
+        if not _model_is_available(model):
+            return None
         return classify_event(event)
     except Exception:
         return None
