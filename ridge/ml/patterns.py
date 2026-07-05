@@ -16,8 +16,26 @@ LOCAL_TZ = tzlocal.get_localzone()
 MIN_DAYS = 7
 
 
+def _load_gemini_labels() -> dict:
+    """Load Gemini-labeled categories keyed by event_id."""
+    labels = {}
+    training_path = RIDGE_DIR / "training_data.jsonl"
+    if not training_path.exists():
+        return labels
+    import json
+    with open(training_path) as f:
+        for line in f:
+            try:
+                record = json.loads(line)
+                if record.get("source") == "gemini" and record.get("event_id"):
+                    labels[record["event_id"]] = record.get("label", "shallow")
+            except Exception:
+                continue
+    return labels
+
+
 def _load_events(days: int = 60):
-    """Load events from the last N days."""
+    """Load events from the last N days, enriched with Gemini labels where available."""
     if not DB_PATH.exists():
         return []
     conn = sqlite3.connect(DB_PATH)
@@ -27,7 +45,23 @@ def _load_events(days: int = 60):
         "SELECT * FROM events WHERE ts >= ? ORDER BY ts", (since,)
     ).fetchall()
     conn.close()
-    return rows
+
+    # Enrich with Gemini labels
+    gemini_labels = _load_gemini_labels()
+    if not gemini_labels:
+        return rows
+
+    # Convert to dicts so we can override category
+    enriched = []
+    for row in rows:
+        d = dict(row)
+        if d["id"] in gemini_labels:
+            d["category"] = gemini_labels[d["id"]]
+            d["ai_labeled"] = True
+        else:
+            d["ai_labeled"] = False
+        enriched.append(d)
+    return enriched
 
 
 def _to_local(ts_str: str) -> datetime:
