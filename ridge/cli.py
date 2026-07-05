@@ -317,6 +317,52 @@ def version():
     """Show Ridge CLI version."""
     console.print(f"\n  [bold]Ridge CLI[/bold] v{__version__}\n")
 
+@app.command()
+def setup(
+    force: bool = typer.Option(False, "--force", help="Re-run setup even if already configured")
+):
+    """Run the setup wizard to configure Ridge CLI."""
+    from ridge.setup import run_setup
+    run_setup(force=force)
+
+
+@app.command()
+def config(
+    action: str = typer.Argument("show", help="show | set | reset"),
+    key: Optional[str] = typer.Argument(None, help="Config key to set"),
+    value: Optional[str] = typer.Argument(None, help="Value to set"),
+):
+    """View or update Ridge CLI configuration."""
+    from ridge import config as cfg
+
+    if action == "show":
+        settings = cfg.show()
+        console.print()
+        console.rule("[bold]Ridge CLI Configuration[/bold]", style="dim")
+        console.print()
+        for k, v in settings.items():
+            val_display = str(v) if v is not None else "[dim]not set[/dim]"
+            console.print(f"  [dim]{k:<25}[/dim] [bold]{val_display}[/bold]")
+        console.print()
+        console.rule(style="dim")
+        console.print()
+
+    elif action == "set":
+        if not key or not value:
+            console.print("[red]Usage: ridge config set <key> <value>[/red]")
+            raise typer.Exit(1)
+        success, msg = cfg.set_value(key, value)
+        if success:
+            console.print(f"\n  [green]✓[/green] {msg}\n")
+        else:
+            console.print(f"\n  [red]✗[/red] {msg}\n")
+
+    elif action == "reset":
+        cfg.reset()
+        console.print("\n  [green]✓ Configuration reset to defaults.[/green]\n")
+
+    else:
+        console.print(f"[red]Unknown action: {action}. Use show, set, or reset.[/red]")
 
 @app.callback(invoke_without_command=True)
 def main(ctx: typer.Context):
